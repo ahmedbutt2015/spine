@@ -37,9 +37,23 @@ export interface EntryPoint {
   reason: string;
 }
 
+export interface VerifiedEdge {
+  from: string;
+  to: string;
+  kind: "import";
+}
+
+export interface SpineAnalysis {
+  supportedLanguages: DetectedLanguage[];
+  nodes: string[];
+  edges: VerifiedEdge[];
+  entrySeeds: string[];
+  omittedEntryPoints: string[];
+}
+
 export interface AnalysisResult {
   detection: ProjectDetection;
   entryPoints: EntryPoint[];
+  spine: SpineAnalysis;
   suggestedReadingOrder: string[];
 }
-

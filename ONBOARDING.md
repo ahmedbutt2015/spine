@@ -1,15 +1,21 @@
 # Onboarding tour: spine
 
 ## TL;DR
-This repository looks like a cli codebase built primarily in typescript. The most likely starting points are `src/cli.ts`, `src/index.ts`. This first pass is deterministic and only covers repo shape plus entry discovery; verified spine extraction and Mermaid generation come next.
+This repository looks like a cli codebase built primarily in typescript. The most likely starting points are `src/cli.ts`, `src/index.ts`. This pass is deterministic and now includes first-pass TS/JS spine extraction; diagram generation and broader multi-language tracing come next.
 
 ## Architecture map
-Diagram generation is not wired in yet for this slice. The next stage will trace the verified spine and only emit edges proven by static analysis.
+Verified TS/JS spine nodes: `src/core/analyze.ts`, `src/formatters/onboarding.ts`, `src/core/detect.ts`, `src/core/entries.ts`, `src/core/spine.ts`, `src/types.ts`, `src/cli.ts`. Retained 10 verified edge(s) from static imports only. Diagram generation is the next step, but the node and edge set is now grounded in real source relationships.
 
 ## Mental model
 Treat the command surface as the product. Follow the bin entry, then the argument parsing, then the core execution path.
 
 ## Reading order
+- `src/core/analyze.ts` - Read this early because it either starts the program or defines a key project contract.
+- `src/formatters/onboarding.ts` - Read this early because it either starts the program or defines a key project contract.
+- `src/core/detect.ts` - Read this early because it either starts the program or defines a key project contract.
+- `src/core/entries.ts` - Read this early because it either starts the program or defines a key project contract.
+- `src/core/spine.ts` - Read this early because it either starts the program or defines a key project contract.
+- `src/types.ts` - Read this early because it either starts the program or defines a key project contract.
 - `src/cli.ts` - Read this early because it either starts the program or defines a key project contract.
 - `src/index.ts` - Read this early because it either starts the program or defines a key project contract.
 - `README.md` - Read this early because it either starts the program or defines a key project contract.
@@ -27,4 +33,4 @@ Treat the command surface as the product. Follow the bin entry, then the argumen
 - Detected CLI bin entry.
 
 ## Estimated read time
-10-20 minutes for the current deterministic scan, pending deeper spine extraction.
+10-20 minutes for the current deterministic scan, with deeper subsystem synthesis still pending.

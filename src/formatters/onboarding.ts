@@ -25,7 +25,7 @@ export function renderOnboardingMarkdown(result: AnalysisResult): string {
   const tlDr = [
     `This repository looks like a ${result.detection.shape} codebase built primarily in ${result.detection.languages.join(", ")}.`,
     `The most likely starting points are ${result.entryPoints.slice(0, 3).map((entryPoint) => `\`${entryPoint.path}\``).join(", ") || "still being determined"}.`,
-    `This first pass is deterministic and only covers repo shape plus entry discovery; verified spine extraction and Mermaid generation come next.`
+    `This pass is deterministic and now includes first-pass TS/JS spine extraction; diagram generation and broader multi-language tracing come next.`
   ].join(" ");
 
   const readingOrder = result.suggestedReadingOrder.length
@@ -37,6 +37,13 @@ export function renderOnboardingMarkdown(result: AnalysisResult): string {
     : "- No entry points detected.";
 
   const gotchas = result.detection.reasons.map((reason) => `- ${reason}`).join("\n");
+  const architectureSummary = result.spine.nodes.length
+    ? [
+        `Verified TS/JS spine nodes: ${result.spine.nodes.map((node) => `\`${node}\``).join(", ")}.`,
+        `Retained ${result.spine.edges.length} verified edge(s) from static imports only.`,
+        `Diagram generation is the next step, but the node and edge set is now grounded in real source relationships.`
+      ].join(" ")
+    : "No verified TS/JS spine is available yet for this repository shape. Diagram generation remains pending.";
 
   return `# Onboarding tour: ${result.detection.repoName}
 
@@ -44,7 +51,7 @@ export function renderOnboardingMarkdown(result: AnalysisResult): string {
 ${tlDr}
 
 ## Architecture map
-Diagram generation is not wired in yet for this slice. The next stage will trace the verified spine and only emit edges proven by static analysis.
+${architectureSummary}
 
 ## Mental model
 ${renderMentalModel(result)}
@@ -62,7 +69,6 @@ ${entryPoints}
 ${gotchas || "- No gotchas yet."}
 
 ## Estimated read time
-10-20 minutes for the current deterministic scan, pending deeper spine extraction.
+10-20 minutes for the current deterministic scan, with deeper subsystem synthesis still pending.
 `;
 }
-

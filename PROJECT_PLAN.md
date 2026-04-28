@@ -121,12 +121,16 @@ $ claude /onboard
 - [x] Implemented multi-language entry-point detection
 - [x] Added initial fixture coverage for TS/JS, Python, Go, Rust, and monorepo cases
 - [x] Added a starter `ONBOARDING.md` generator
+- [x] Added a TS/JS verified import graph and first-pass spine extraction
+- [x] Added a `benchmarks/` workspace for real-repo validation
 - [x] Verified the current scaffold with `npm run check`, `npm run test`, and `npm run onboard -- .`
 
 ### In progress conceptually
 
-- [ ] Spine tracing from entry points
-- [ ] Verified edge extraction
+- [x] Spine tracing from TS/JS entry points
+- [x] Verified TS/JS import-edge extraction
+- [ ] Spine tracing from Python, Go, and Rust entry points
+- [ ] Verified edge extraction for Python, Go, and Rust
 - [ ] Subsystem clustering
 - [ ] Final markdown contract
 - [ ] Mermaid parse validation
@@ -158,14 +162,14 @@ Status: next up
 
 Checklist:
 
-- [ ] Parse imports and requires for TS/JS
+- [x] Parse imports and requires for TS/JS
 - [ ] Parse imports for Python
 - [ ] Parse module/file references for Go
 - [ ] Parse module references for Rust
-- [ ] Walk outward from entry points at shallow depth
-- [ ] Score files by reach from entry points
-- [ ] Select top 5-7 spine nodes
-- [ ] Build verified edges only between selected nodes
+- [x] Walk outward from TS/JS entry points at shallow depth
+- [x] Score TS/JS files by reach from entry points
+- [x] Select the first 5-7 TS/JS spine nodes
+- [x] Build verified edges only between selected TS/JS nodes
 - [ ] Drop unresolved or speculative edges
 - [ ] Add tests proving every retained edge exists in source
 
@@ -276,8 +280,11 @@ Use this as the day-to-day implementation checklist.
 - [x] Baseline scaffold created
 - [x] Deterministic detection implemented
 - [x] Entry-point finder implemented
-- [ ] Spine tracer implemented
-- [ ] Verified edge builder implemented
+- [x] TS/JS spine tracer implemented
+- [x] TS/JS verified edge builder implemented
+- [ ] Python spine tracer implemented
+- [ ] Go spine tracer implemented
+- [ ] Rust spine tracer implemented
 - [ ] Subsystem clustering implemented
 - [ ] Mermaid generator implemented
 - [ ] Mermaid validator implemented
@@ -286,4 +293,3 @@ Use this as the day-to-day implementation checklist.
 - [ ] Runtime prompt written
 - [ ] Snapshot suite expanded
 - [ ] Public launch polish completed
-

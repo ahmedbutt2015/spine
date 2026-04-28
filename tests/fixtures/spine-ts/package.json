@@ -1,0 +1,8 @@
+{
+  "name": "spine-ts",
+  "private": true,
+  "type": "module",
+  "bin": "./dist/cli.js",
+  "main": "./dist/index.js"
+}
+
