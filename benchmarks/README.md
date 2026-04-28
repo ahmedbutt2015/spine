@@ -15,9 +15,9 @@ Use this directory to clone real repositories and validate each milestone agains
 
 - `axios` - normal JavaScript/TypeScript benchmark
 - `poetry` - bigger Python benchmark
-- `gin` - normal Go benchmark
+- `glow` - normal Go benchmark
 - `gitea` - bigger Go benchmark
-- `serde` - normal Rust benchmark
+- `log` - normal Rust benchmark
 - `tokio` - bigger Rust benchmark
 - `express` - normal JavaScript benchmark
 - `nest` - bigger TypeScript benchmark

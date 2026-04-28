@@ -7,6 +7,7 @@ import { pathExists, walkRepositoryFiles } from "./repository.js";
 const SUPPORTED_SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 const SOURCE_EXTENSION_SET = new Set(SUPPORTED_SOURCE_EXTENSIONS);
 const PYTHON_EXTENSION = ".py";
+const RUST_EXTENSION = ".rs";
 
 const IMPORT_PATTERNS = [
   /import\s+(?:type\s+)?[^"'`]*?from\s*["']([^"'`]+)["']/g,
@@ -28,12 +29,20 @@ function isPythonLanguage(language: DetectedLanguage): boolean {
   return language === "python";
 }
 
+function isRustLanguage(language: DetectedLanguage): boolean {
+  return language === "rust";
+}
+
 function isSourceFile(filePath: string): boolean {
   return SOURCE_EXTENSION_SET.has(path.extname(filePath).toLowerCase());
 }
 
 function isPythonFile(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === PYTHON_EXTENSION;
+}
+
+function isRustFile(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === RUST_EXTENSION;
 }
 
 function getPythonModuleParts(filePath: string): string[] {
@@ -92,6 +101,20 @@ function collectPythonImportSpecifiers(source: string): string[] {
       }
 
       matches.push(`${moduleSpecifier}:`);
+    }
+  }
+
+  return matches;
+}
+
+function collectRustModuleSpecifiers(source: string): string[] {
+  const matches: string[] = [];
+  const modulePattern = /(?:^|\s)(?:pub\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/gm;
+
+  for (const match of source.matchAll(modulePattern)) {
+    const specifier = match[1];
+    if (specifier) {
+      matches.push(specifier);
     }
   }
 
@@ -262,6 +285,55 @@ async function buildPythonImportGraph(
   return graph;
 }
 
+function resolveRustModuleFile(fromPath: string, moduleName: string, candidateFiles: Set<string>): string | null {
+  const fileDirectory = path.posix.dirname(fromPath);
+  const isRootModule =
+    fromPath === "src/lib.rs" ||
+    fromPath === "src/main.rs" ||
+    /^src\/bin\/[^/]+\.rs$/.test(fromPath);
+
+  const baseDirectory =
+    path.posix.basename(fromPath) === "mod.rs" || isRootModule ? fileDirectory : path.posix.dirname(fromPath);
+
+  const candidates = [
+    path.posix.join(baseDirectory, `${moduleName}.rs`),
+    path.posix.join(baseDirectory, moduleName, "mod.rs")
+  ];
+
+  for (const candidate of candidates) {
+    if (candidateFiles.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+async function buildRustModuleGraph(
+  rootPath: string,
+  candidateFiles: Set<string>
+): Promise<Map<string, Set<string>>> {
+  const graph = new Map<string, Set<string>>();
+
+  for (const filePath of candidateFiles) {
+    const absolutePath = path.join(rootPath, filePath);
+    const source = await readFile(absolutePath, "utf8");
+    const moduleSpecifiers = collectRustModuleSpecifiers(source);
+    const resolvedModules = new Set<string>();
+
+    for (const moduleSpecifier of moduleSpecifiers) {
+      const resolved = resolveRustModuleFile(filePath, moduleSpecifier, candidateFiles);
+      if (resolved && resolved !== filePath) {
+        resolvedModules.add(resolved);
+      }
+    }
+
+    graph.set(filePath, resolvedModules);
+  }
+
+  return graph;
+}
+
 function chooseSpineNodes(scores: Map<string, number>, entrySeeds: string[]): string[] {
   const ranked = [...scores.entries()].sort((left, right) => {
     if (right[1] !== left[1]) {
@@ -331,6 +403,9 @@ export async function extractVerifiedSpine(
   const pythonFiles = new Set(
     repositoryFiles.map((file) => file.path).filter((filePath) => isPythonFile(filePath))
   );
+  const rustFiles = new Set(
+    repositoryFiles.map((file) => file.path).filter((filePath) => isRustFile(filePath))
+  );
 
   const tsJsEntries = entryPoints
     .filter((entryPoint) => isTsOrJsLanguage(entryPoint.language))
@@ -340,8 +415,12 @@ export async function extractVerifiedSpine(
     .filter((entryPoint) => isPythonLanguage(entryPoint.language))
     .map((entryPoint) => entryPoint.path)
     .filter((filePath) => pythonFiles.has(filePath));
+  const rustEntries = entryPoints
+    .filter((entryPoint) => isRustLanguage(entryPoint.language))
+    .map((entryPoint) => entryPoint.path)
+    .filter((filePath) => rustFiles.has(filePath));
 
-  if (tsJsEntries.length === 0 && pythonEntries.length === 0) {
+  if (tsJsEntries.length === 0 && pythonEntries.length === 0 && rustEntries.length === 0) {
     return {
       supportedLanguages: [],
       nodes: [],
@@ -371,7 +450,15 @@ export async function extractVerifiedSpine(
     }
   }
 
-  const entrySeeds = [...tsJsEntries, ...pythonEntries].sort();
+  if (rustEntries.length > 0) {
+    graphs.set("rust", await buildRustModuleGraph(rootPath, rustFiles));
+    supportedLanguages.push("rust");
+    for (const [filePath, score] of scoreGraphFromSeeds(graphs.get("rust")!, rustEntries, maxDepth)) {
+      scores.set(filePath, (scores.get(filePath) ?? 0) + score);
+    }
+  }
+
+  const entrySeeds = [...tsJsEntries, ...pythonEntries, ...rustEntries].sort();
   const nodes = chooseSpineNodes(scores, entrySeeds);
   const nodeSet = new Set(nodes);
   const edges: VerifiedEdge[] = [];

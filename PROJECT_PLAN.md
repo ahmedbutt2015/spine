@@ -126,6 +126,7 @@ $ claude /onboard
 - [x] Added a benchmark catalog for JS, TS, Python, Go, Rust, and PHP repos
 - [x] Added first-pass Python verified import tracing
 - [x] Added coverage for Python `src/` layout imports discovered during benchmark testing
+- [x] Added first-pass Rust verified module tracing
 - [x] Verified the current scaffold with `npm run check`, `npm run test`, and `npm run onboard -- .`
 
 ### In progress conceptually
@@ -134,8 +135,10 @@ $ claude /onboard
 - [x] Verified TS/JS import-edge extraction
 - [x] Spine tracing from Python entry points
 - [x] Verified Python import-edge extraction
-- [ ] Spine tracing from Go and Rust entry points
-- [ ] Verified edge extraction for Go and Rust
+- [x] Spine tracing from Rust entry points
+- [x] Verified Rust module-edge extraction
+- [ ] Spine tracing from Go entry points
+- [ ] Verified edge extraction for Go
 - [ ] Subsystem clustering
 - [ ] Final markdown contract
 - [ ] Mermaid parse validation
@@ -170,11 +173,12 @@ Checklist:
 - [x] Parse imports and requires for TS/JS
 - [x] Parse imports for Python
 - [ ] Parse module/file references for Go
-- [ ] Parse module references for Rust
+- [x] Parse module references for Rust
 - [x] Walk outward from TS/JS and Python entry points at shallow depth
 - [x] Score TS/JS and Python files by reach from entry points
 - [x] Select the first 5-7 TS/JS and Python spine nodes
 - [x] Build verified edges only between selected TS/JS and Python nodes
+- [x] Build verified edges only between selected Rust nodes
 - [ ] Drop unresolved or speculative edges
 - [ ] Add tests proving every retained edge exists in source
 
@@ -289,7 +293,7 @@ Use this as the day-to-day implementation checklist.
 - [x] TS/JS verified edge builder implemented
 - [x] Python spine tracer implemented
 - [ ] Go spine tracer implemented
-- [ ] Rust spine tracer implemented
+- [x] Rust spine tracer implemented
 - [ ] Subsystem clustering implemented
 - [ ] Mermaid generator implemented
 - [ ] Mermaid validator implemented

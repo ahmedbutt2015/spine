@@ -81,4 +81,26 @@ describe("extractVerifiedSpine", () => {
       { from: "src/tool/cli.py", to: "src/tool/config.py", kind: "import" }
     ]);
   });
+
+  it("builds a verified module spine for a Rust crate", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-rust");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(spine.supportedLanguages).toEqual(["rust"]);
+    expect(spine.entrySeeds).toEqual(["src/lib.rs"]);
+    expect(spine.nodes).toEqual([
+      "src/lib.rs",
+      "src/config.rs",
+      "src/routes/mod.rs",
+      "src/services/mod.rs",
+      "src/services/user_service.rs"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "src/lib.rs", to: "src/config.rs", kind: "import" },
+      { from: "src/lib.rs", to: "src/routes/mod.rs", kind: "import" },
+      { from: "src/lib.rs", to: "src/services/mod.rs", kind: "import" },
+      { from: "src/services/mod.rs", to: "src/services/user_service.rs", kind: "import" }
+    ]);
+  });
 });

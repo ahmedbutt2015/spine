@@ -22,9 +22,9 @@ export const benchmarkCatalog: BenchmarkRepo[] = [
     size: "big"
   },
   {
-    name: "gin",
-    description: "Popular Go web framework with approachable package structure.",
-    gitUrl: "https://github.com/gin-gonic/gin.git",
+    name: "glow",
+    description: "Go CLI app with a clear entry path and approachable package structure.",
+    gitUrl: "https://github.com/charmbracelet/glow.git",
     language: "go",
     size: "normal"
   },
@@ -36,9 +36,9 @@ export const benchmarkCatalog: BenchmarkRepo[] = [
     size: "big"
   },
   {
-    name: "serde",
-    description: "Core Rust serialization framework with strong module boundaries.",
-    gitUrl: "https://github.com/serde-rs/serde.git",
+    name: "log",
+    description: "Single-crate Rust library benchmark with straightforward module structure.",
+    gitUrl: "https://github.com/rust-lang/log.git",
     language: "rust",
     size: "normal"
   },
