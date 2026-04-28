@@ -14,6 +14,8 @@
     "node": ">=20"
   },
   "scripts": {
+    "benchmark:clone": "tsx src/benchmarks/cli.ts clone",
+    "benchmark:list": "tsx src/benchmarks/cli.ts list",
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit",
     "onboard": "tsx src/cli.ts",
@@ -40,4 +42,3 @@
     "vitest": "^3.2.4"
   }
 }
-

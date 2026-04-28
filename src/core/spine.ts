@@ -6,6 +6,7 @@ import { pathExists, walkRepositoryFiles } from "./repository.js";
 
 const SUPPORTED_SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 const SOURCE_EXTENSION_SET = new Set(SUPPORTED_SOURCE_EXTENSIONS);
+const PYTHON_EXTENSION = ".py";
 
 const IMPORT_PATTERNS = [
   /import\s+(?:type\s+)?[^"'`]*?from\s*["']([^"'`]+)["']/g,
@@ -23,8 +24,27 @@ function isTsOrJsLanguage(language: DetectedLanguage): boolean {
   return language === "typescript" || language === "javascript";
 }
 
+function isPythonLanguage(language: DetectedLanguage): boolean {
+  return language === "python";
+}
+
 function isSourceFile(filePath: string): boolean {
   return SOURCE_EXTENSION_SET.has(path.extname(filePath).toLowerCase());
+}
+
+function isPythonFile(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === PYTHON_EXTENSION;
+}
+
+function getPythonModuleParts(filePath: string): string[] {
+  const normalized = filePath.replace(/\.py$/, "").split("/");
+  const withoutLayoutPrefix = normalized[0] === "src" ? normalized.slice(1) : normalized;
+
+  if (withoutLayoutPrefix[withoutLayoutPrefix.length - 1] === "__init__") {
+    return withoutLayoutPrefix.slice(0, -1);
+  }
+
+  return withoutLayoutPrefix;
 }
 
 function collectImportSpecifiers(source: string): string[] {
@@ -38,6 +58,40 @@ function collectImportSpecifiers(source: string): string[] {
       if (specifier) {
         matches.push(specifier);
       }
+    }
+  }
+
+  return matches;
+}
+
+function collectPythonImportSpecifiers(source: string): string[] {
+  const matches: string[] = [];
+  const lines = source.split(/\r?\n/);
+
+  for (const line of lines) {
+    const importMatch = line.match(/^\s*import\s+(.+)$/);
+    if (importMatch) {
+      const modules = importMatch[1]
+        .split(",")
+        .map((part) => part.trim().split(/\s+as\s+/)[0]?.trim())
+        .filter((part): part is string => Boolean(part));
+      matches.push(...modules);
+      continue;
+    }
+
+    const fromMatch = line.match(/^\s*from\s+([.\w]+)\s+import\s+(.+)$/);
+    if (fromMatch) {
+      const moduleSpecifier = fromMatch[1];
+      const importedNames = fromMatch[2]
+        .split(",")
+        .map((part) => part.trim().split(/\s+as\s+/)[0]?.trim())
+        .filter((part): part is string => Boolean(part && part !== "*"));
+
+      for (const importedName of importedNames) {
+        matches.push(`${moduleSpecifier}:${importedName}`);
+      }
+
+      matches.push(`${moduleSpecifier}:`);
     }
   }
 
@@ -122,6 +176,92 @@ async function buildImportGraph(
   return graph;
 }
 
+function buildPythonModuleIndex(candidateFiles: Set<string>): Map<string, string[]> {
+  const moduleIndex = new Map<string, string[]>();
+
+  for (const filePath of candidateFiles) {
+    const moduleName = getPythonModuleParts(filePath).join(".");
+    const moduleNames = moduleName ? [moduleName] : [];
+
+    for (const moduleName of moduleNames) {
+      const existing = moduleIndex.get(moduleName) ?? [];
+      existing.push(filePath);
+      moduleIndex.set(moduleName, existing);
+    }
+  }
+
+  return moduleIndex;
+}
+
+function getPythonPackageParts(filePath: string): string[] {
+  const moduleParts = getPythonModuleParts(filePath);
+  return path.basename(filePath) === "__init__.py" ? moduleParts : moduleParts.slice(0, -1);
+}
+
+function resolvePythonBaseModule(filePath: string, moduleSpecifier: string): string {
+  if (!moduleSpecifier.startsWith(".")) {
+    return moduleSpecifier;
+  }
+
+  const dotPrefix = moduleSpecifier.match(/^\.+/)?.[0].length ?? 0;
+  const remainder = moduleSpecifier.slice(dotPrefix);
+  const currentPackageParts = getPythonPackageParts(filePath);
+  const retainedParts = currentPackageParts.slice(0, Math.max(0, currentPackageParts.length - (dotPrefix - 1)));
+  const remainderParts = remainder ? remainder.split(".").filter(Boolean) : [];
+
+  return [...retainedParts, ...remainderParts].join(".");
+}
+
+function resolvePythonSpecifierToModuleNames(filePath: string, specifier: string): string[] {
+  if (specifier.includes(":")) {
+    const [modulePart, importedName] = specifier.split(":", 2);
+    const baseModule = resolvePythonBaseModule(filePath, modulePart);
+    const candidates = importedName ? [`${baseModule}.${importedName}`, baseModule] : [baseModule];
+    return candidates.filter(Boolean);
+  }
+
+  return [resolvePythonBaseModule(filePath, specifier)].filter(Boolean);
+}
+
+async function buildPythonImportGraph(
+  rootPath: string,
+  candidateFiles: Set<string>
+): Promise<Map<string, Set<string>>> {
+  const graph = new Map<string, Set<string>>();
+  const moduleIndex = buildPythonModuleIndex(candidateFiles);
+
+  for (const filePath of candidateFiles) {
+    const absolutePath = path.join(rootPath, filePath);
+    const source = await readFile(absolutePath, "utf8");
+    const specifiers = collectPythonImportSpecifiers(source);
+    const resolvedImports = new Set<string>();
+
+    for (const specifier of specifiers) {
+      const moduleCandidates = resolvePythonSpecifierToModuleNames(filePath, specifier);
+      for (const moduleName of moduleCandidates) {
+        const targetFiles = moduleIndex.get(moduleName);
+        if (!targetFiles) {
+          continue;
+        }
+
+        for (const targetFile of targetFiles) {
+          if (candidateFiles.has(targetFile) && targetFile !== filePath) {
+            resolvedImports.add(targetFile);
+          }
+        }
+
+        if (targetFiles.length > 0) {
+          break;
+        }
+      }
+    }
+
+    graph.set(filePath, resolvedImports);
+  }
+
+  return graph;
+}
+
 function chooseSpineNodes(scores: Map<string, number>, entrySeeds: string[]): string[] {
   const ranked = [...scores.entries()].sort((left, right) => {
     if (right[1] !== left[1]) {
@@ -140,35 +280,14 @@ function chooseSpineNodes(scores: Map<string, number>, entrySeeds: string[]): st
   return ranked.slice(0, Math.min(7, Math.max(5, ranked.length))).map(([filePath]) => filePath);
 }
 
-export async function extractVerifiedSpine(
-  rootPath: string,
-  entryPoints: EntryPoint[],
-  maxDepth = 3
-): Promise<SpineAnalysis> {
-  const repositoryFiles = await walkRepositoryFiles(rootPath);
-  const candidateFiles = new Set(
-    repositoryFiles.map((file) => file.path).filter((filePath) => isSourceFile(filePath))
-  );
-
-  const tsJsEntries = entryPoints
-    .filter((entryPoint) => isTsOrJsLanguage(entryPoint.language))
-    .map((entryPoint) => entryPoint.path)
-    .filter((filePath) => candidateFiles.has(filePath));
-
-  if (tsJsEntries.length === 0) {
-    return {
-      supportedLanguages: [],
-      nodes: [],
-      edges: [],
-      entrySeeds: [],
-      omittedEntryPoints: entryPoints.map((entryPoint) => entryPoint.path)
-    };
-  }
-
-  const graph = await buildImportGraph(rootPath, candidateFiles);
+function scoreGraphFromSeeds(
+  graph: Map<string, Set<string>>,
+  seeds: string[],
+  maxDepth: number
+): Map<string, number> {
   const scores = new Map<string, number>();
 
-  for (const seed of tsJsEntries) {
+  for (const seed of seeds) {
     const seenDepth = new Map<string, number>();
     const queue = [{ filePath: seed, depth: 0 }];
 
@@ -197,20 +316,78 @@ export async function extractVerifiedSpine(
     }
   }
 
-  const nodes = chooseSpineNodes(scores, tsJsEntries);
+  return scores;
+}
+
+export async function extractVerifiedSpine(
+  rootPath: string,
+  entryPoints: EntryPoint[],
+  maxDepth = 3
+): Promise<SpineAnalysis> {
+  const repositoryFiles = await walkRepositoryFiles(rootPath);
+  const tsJsFiles = new Set(
+    repositoryFiles.map((file) => file.path).filter((filePath) => isSourceFile(filePath))
+  );
+  const pythonFiles = new Set(
+    repositoryFiles.map((file) => file.path).filter((filePath) => isPythonFile(filePath))
+  );
+
+  const tsJsEntries = entryPoints
+    .filter((entryPoint) => isTsOrJsLanguage(entryPoint.language))
+    .map((entryPoint) => entryPoint.path)
+    .filter((filePath) => tsJsFiles.has(filePath));
+  const pythonEntries = entryPoints
+    .filter((entryPoint) => isPythonLanguage(entryPoint.language))
+    .map((entryPoint) => entryPoint.path)
+    .filter((filePath) => pythonFiles.has(filePath));
+
+  if (tsJsEntries.length === 0 && pythonEntries.length === 0) {
+    return {
+      supportedLanguages: [],
+      nodes: [],
+      edges: [],
+      entrySeeds: [],
+      omittedEntryPoints: entryPoints.map((entryPoint) => entryPoint.path)
+    };
+  }
+
+  const graphs = new Map<string, Map<string, Set<string>>>();
+  const scores = new Map<string, number>();
+  const supportedLanguages: DetectedLanguage[] = [];
+
+  if (tsJsEntries.length > 0) {
+    graphs.set("tsjs", await buildImportGraph(rootPath, tsJsFiles));
+    supportedLanguages.push("typescript", "javascript");
+    for (const [filePath, score] of scoreGraphFromSeeds(graphs.get("tsjs")!, tsJsEntries, maxDepth)) {
+      scores.set(filePath, (scores.get(filePath) ?? 0) + score);
+    }
+  }
+
+  if (pythonEntries.length > 0) {
+    graphs.set("python", await buildPythonImportGraph(rootPath, pythonFiles));
+    supportedLanguages.push("python");
+    for (const [filePath, score] of scoreGraphFromSeeds(graphs.get("python")!, pythonEntries, maxDepth)) {
+      scores.set(filePath, (scores.get(filePath) ?? 0) + score);
+    }
+  }
+
+  const entrySeeds = [...tsJsEntries, ...pythonEntries].sort();
+  const nodes = chooseSpineNodes(scores, entrySeeds);
   const nodeSet = new Set(nodes);
   const edges: VerifiedEdge[] = [];
 
-  for (const from of nodes) {
-    for (const to of graph.get(from) ?? []) {
-      if (nodeSet.has(to)) {
-        edges.push({ from, to, kind: "import" });
+  for (const graph of graphs.values()) {
+    for (const from of nodes) {
+      for (const to of graph.get(from) ?? []) {
+        if (nodeSet.has(to)) {
+          edges.push({ from, to, kind: "import" });
+        }
       }
     }
   }
 
   return {
-    supportedLanguages: ["typescript", "javascript"],
+    supportedLanguages,
     nodes,
     edges: edges.sort((left, right) => {
       if (left.from !== right.from) {
@@ -219,10 +396,10 @@ export async function extractVerifiedSpine(
 
       return left.to.localeCompare(right.to);
     }),
-    entrySeeds: tsJsEntries.sort(),
+    entrySeeds,
     omittedEntryPoints: entryPoints
       .map((entryPoint) => entryPoint.path)
-      .filter((filePath) => !tsJsEntries.includes(filePath))
+      .filter((filePath) => !entrySeeds.includes(filePath))
       .sort()
   };
 }

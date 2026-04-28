@@ -25,7 +25,7 @@ export function renderOnboardingMarkdown(result: AnalysisResult): string {
   const tlDr = [
     `This repository looks like a ${result.detection.shape} codebase built primarily in ${result.detection.languages.join(", ")}.`,
     `The most likely starting points are ${result.entryPoints.slice(0, 3).map((entryPoint) => `\`${entryPoint.path}\``).join(", ") || "still being determined"}.`,
-    `This pass is deterministic and now includes first-pass TS/JS spine extraction; diagram generation and broader multi-language tracing come next.`
+    `This pass is deterministic and now includes first-pass verified spine extraction for supported languages; diagram generation and broader multi-language tracing come next.`
   ].join(" ");
 
   const readingOrder = result.suggestedReadingOrder.length
@@ -39,11 +39,12 @@ export function renderOnboardingMarkdown(result: AnalysisResult): string {
   const gotchas = result.detection.reasons.map((reason) => `- ${reason}`).join("\n");
   const architectureSummary = result.spine.nodes.length
     ? [
-        `Verified TS/JS spine nodes: ${result.spine.nodes.map((node) => `\`${node}\``).join(", ")}.`,
+        `Verified spine languages: ${result.spine.supportedLanguages.join(", ")}.`,
+        `Verified spine nodes: ${result.spine.nodes.map((node) => `\`${node}\``).join(", ")}.`,
         `Retained ${result.spine.edges.length} verified edge(s) from static imports only.`,
         `Diagram generation is the next step, but the node and edge set is now grounded in real source relationships.`
       ].join(" ")
-    : "No verified TS/JS spine is available yet for this repository shape. Diagram generation remains pending.";
+    : "No verified spine is available yet for this repository shape. Diagram generation remains pending.";
 
   return `# Onboarding tour: ${result.detection.repoName}
 

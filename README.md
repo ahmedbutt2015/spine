@@ -30,6 +30,17 @@ npm run onboard -- .
 
 That writes `ONBOARDING.md` into the target repo root.
 
+## Benchmarks
+
+Use the benchmark catalog to pull down real repositories for milestone checks:
+
+```bash
+npm run benchmark:list
+npm run benchmark:clone -- axios poetry
+```
+
+Cloned benchmark repos land in `benchmarks/repos/` and stay out of git.
+
 ## MVP roadmap
 
 1. Deterministic repo scan

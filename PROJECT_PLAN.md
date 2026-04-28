@@ -123,14 +123,19 @@ $ claude /onboard
 - [x] Added a starter `ONBOARDING.md` generator
 - [x] Added a TS/JS verified import graph and first-pass spine extraction
 - [x] Added a `benchmarks/` workspace for real-repo validation
+- [x] Added a benchmark catalog for JS, TS, Python, Go, Rust, and PHP repos
+- [x] Added first-pass Python verified import tracing
+- [x] Added coverage for Python `src/` layout imports discovered during benchmark testing
 - [x] Verified the current scaffold with `npm run check`, `npm run test`, and `npm run onboard -- .`
 
 ### In progress conceptually
 
 - [x] Spine tracing from TS/JS entry points
 - [x] Verified TS/JS import-edge extraction
-- [ ] Spine tracing from Python, Go, and Rust entry points
-- [ ] Verified edge extraction for Python, Go, and Rust
+- [x] Spine tracing from Python entry points
+- [x] Verified Python import-edge extraction
+- [ ] Spine tracing from Go and Rust entry points
+- [ ] Verified edge extraction for Go and Rust
 - [ ] Subsystem clustering
 - [ ] Final markdown contract
 - [ ] Mermaid parse validation
@@ -163,13 +168,13 @@ Status: next up
 Checklist:
 
 - [x] Parse imports and requires for TS/JS
-- [ ] Parse imports for Python
+- [x] Parse imports for Python
 - [ ] Parse module/file references for Go
 - [ ] Parse module references for Rust
-- [x] Walk outward from TS/JS entry points at shallow depth
-- [x] Score TS/JS files by reach from entry points
-- [x] Select the first 5-7 TS/JS spine nodes
-- [x] Build verified edges only between selected TS/JS nodes
+- [x] Walk outward from TS/JS and Python entry points at shallow depth
+- [x] Score TS/JS and Python files by reach from entry points
+- [x] Select the first 5-7 TS/JS and Python spine nodes
+- [x] Build verified edges only between selected TS/JS and Python nodes
 - [ ] Drop unresolved or speculative edges
 - [ ] Add tests proving every retained edge exists in source
 
@@ -282,7 +287,7 @@ Use this as the day-to-day implementation checklist.
 - [x] Entry-point finder implemented
 - [x] TS/JS spine tracer implemented
 - [x] TS/JS verified edge builder implemented
-- [ ] Python spine tracer implemented
+- [x] Python spine tracer implemented
 - [ ] Go spine tracer implemented
 - [ ] Rust spine tracer implemented
 - [ ] Subsystem clustering implemented
