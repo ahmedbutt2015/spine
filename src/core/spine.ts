@@ -2,12 +2,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { DetectedLanguage, EntryPoint, SpineAnalysis, VerifiedEdge } from "../types.js";
-import { pathExists, walkRepositoryFiles } from "./repository.js";
+import { pathExists, readTextIfExists, walkRepositoryFiles } from "./repository.js";
 
 const SUPPORTED_SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 const SOURCE_EXTENSION_SET = new Set(SUPPORTED_SOURCE_EXTENSIONS);
 const PYTHON_EXTENSION = ".py";
 const RUST_EXTENSION = ".rs";
+const GO_EXTENSION = ".go";
 
 const IMPORT_PATTERNS = [
   /import\s+(?:type\s+)?[^"'`]*?from\s*["']([^"'`]+)["']/g,
@@ -33,6 +34,10 @@ function isRustLanguage(language: DetectedLanguage): boolean {
   return language === "rust";
 }
 
+function isGoLanguage(language: DetectedLanguage): boolean {
+  return language === "go";
+}
+
 function isSourceFile(filePath: string): boolean {
   return SOURCE_EXTENSION_SET.has(path.extname(filePath).toLowerCase());
 }
@@ -43,6 +48,10 @@ function isPythonFile(filePath: string): boolean {
 
 function isRustFile(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === RUST_EXTENSION;
+}
+
+function isGoFile(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === GO_EXTENSION && !filePath.endsWith("_test.go");
 }
 
 function getPythonModuleParts(filePath: string): string[] {
@@ -115,6 +124,36 @@ function collectRustModuleSpecifiers(source: string): string[] {
     const specifier = match[1];
     if (specifier) {
       matches.push(specifier);
+    }
+  }
+
+  return matches;
+}
+
+function collectGoImportSpecifiers(source: string): string[] {
+  const matches: string[] = [];
+  const singleImportPattern = /^\s*import\s+(?:[A-Za-z0-9_\.]+\s+)?"([^"]+)"/gm;
+  const importBlockPattern = /import\s*\(([\s\S]*?)\)/gm;
+  const blockEntryPattern = /^\s*(?:[A-Za-z0-9_\.]+\s+)?"([^"]+)"/gm;
+
+  for (const match of source.matchAll(singleImportPattern)) {
+    const specifier = match[1];
+    if (specifier) {
+      matches.push(specifier);
+    }
+  }
+
+  for (const blockMatch of source.matchAll(importBlockPattern)) {
+    const block = blockMatch[1];
+    if (!block) {
+      continue;
+    }
+
+    for (const entryMatch of block.matchAll(blockEntryPattern)) {
+      const specifier = entryMatch[1];
+      if (specifier) {
+        matches.push(specifier);
+      }
     }
   }
 
@@ -334,6 +373,96 @@ async function buildRustModuleGraph(
   return graph;
 }
 
+function chooseRepresentativeGoFile(directoryPath: string, files: string[]): string {
+  const sortedFiles = [...files].sort();
+  const basename = path.posix.basename(directoryPath);
+
+  const preferredCandidates = [
+    basename ? path.posix.join(directoryPath, `${basename}.go`) : "main.go",
+    path.posix.join(directoryPath, "main.go"),
+    path.posix.join(directoryPath, "root.go")
+  ];
+
+  for (const candidate of preferredCandidates) {
+    if (sortedFiles.includes(candidate)) {
+      return candidate;
+    }
+  }
+
+  return sortedFiles[0];
+}
+
+function buildGoPackageIndex(candidateFiles: Set<string>): Map<string, string> {
+  const filesByDirectory = new Map<string, string[]>();
+
+  for (const filePath of candidateFiles) {
+    const directoryPath = path.posix.dirname(filePath) === "." ? "" : path.posix.dirname(filePath);
+    const existing = filesByDirectory.get(directoryPath) ?? [];
+    existing.push(filePath);
+    filesByDirectory.set(directoryPath, existing);
+  }
+
+  const packageIndex = new Map<string, string>();
+  for (const [directoryPath, files] of filesByDirectory) {
+    packageIndex.set(directoryPath, chooseRepresentativeGoFile(directoryPath, files));
+  }
+
+  return packageIndex;
+}
+
+function resolveGoImportToDirectory(modulePath: string, specifier: string): string | null {
+  if (specifier === modulePath) {
+    return "";
+  }
+
+  if (!specifier.startsWith(`${modulePath}/`)) {
+    return null;
+  }
+
+  return specifier.slice(modulePath.length + 1);
+}
+
+async function buildGoImportGraph(
+  rootPath: string,
+  candidateFiles: Set<string>
+): Promise<Map<string, Set<string>>> {
+  const graph = new Map<string, Set<string>>();
+  const goMod = await readTextIfExists(path.join(rootPath, "go.mod"));
+  const modulePath = goMod?.match(/^module\s+(\S+)/m)?.[1];
+
+  if (!modulePath) {
+    for (const filePath of candidateFiles) {
+      graph.set(filePath, new Set());
+    }
+    return graph;
+  }
+
+  const packageIndex = buildGoPackageIndex(candidateFiles);
+
+  for (const filePath of candidateFiles) {
+    const absolutePath = path.join(rootPath, filePath);
+    const source = await readFile(absolutePath, "utf8");
+    const specifiers = collectGoImportSpecifiers(source);
+    const resolvedImports = new Set<string>();
+
+    for (const specifier of specifiers) {
+      const targetDirectory = resolveGoImportToDirectory(modulePath, specifier);
+      if (targetDirectory === null) {
+        continue;
+      }
+
+      const representativeFile = packageIndex.get(targetDirectory);
+      if (representativeFile && representativeFile !== filePath) {
+        resolvedImports.add(representativeFile);
+      }
+    }
+
+    graph.set(filePath, resolvedImports);
+  }
+
+  return graph;
+}
+
 function chooseSpineNodes(scores: Map<string, number>, entrySeeds: string[]): string[] {
   const ranked = [...scores.entries()].sort((left, right) => {
     if (right[1] !== left[1]) {
@@ -406,6 +535,9 @@ export async function extractVerifiedSpine(
   const rustFiles = new Set(
     repositoryFiles.map((file) => file.path).filter((filePath) => isRustFile(filePath))
   );
+  const goFiles = new Set(
+    repositoryFiles.map((file) => file.path).filter((filePath) => isGoFile(filePath))
+  );
 
   const tsJsEntries = entryPoints
     .filter((entryPoint) => isTsOrJsLanguage(entryPoint.language))
@@ -419,8 +551,12 @@ export async function extractVerifiedSpine(
     .filter((entryPoint) => isRustLanguage(entryPoint.language))
     .map((entryPoint) => entryPoint.path)
     .filter((filePath) => rustFiles.has(filePath));
+  const goEntries = entryPoints
+    .filter((entryPoint) => isGoLanguage(entryPoint.language))
+    .map((entryPoint) => entryPoint.path)
+    .filter((filePath) => goFiles.has(filePath));
 
-  if (tsJsEntries.length === 0 && pythonEntries.length === 0 && rustEntries.length === 0) {
+  if (tsJsEntries.length === 0 && pythonEntries.length === 0 && rustEntries.length === 0 && goEntries.length === 0) {
     return {
       supportedLanguages: [],
       nodes: [],
@@ -458,7 +594,15 @@ export async function extractVerifiedSpine(
     }
   }
 
-  const entrySeeds = [...tsJsEntries, ...pythonEntries, ...rustEntries].sort();
+  if (goEntries.length > 0) {
+    graphs.set("go", await buildGoImportGraph(rootPath, goFiles));
+    supportedLanguages.push("go");
+    for (const [filePath, score] of scoreGraphFromSeeds(graphs.get("go")!, goEntries, maxDepth)) {
+      scores.set(filePath, (scores.get(filePath) ?? 0) + score);
+    }
+  }
+
+  const entrySeeds = [...tsJsEntries, ...pythonEntries, ...rustEntries, ...goEntries].sort();
   const nodes = chooseSpineNodes(scores, entrySeeds);
   const nodeSet = new Set(nodes);
   const edges: VerifiedEdge[] = [];

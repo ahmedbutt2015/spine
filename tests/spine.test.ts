@@ -103,4 +103,26 @@ describe("extractVerifiedSpine", () => {
       { from: "src/services/mod.rs", to: "src/services/user_service.rs", kind: "import" }
     ]);
   });
+
+  it("builds a verified import-only spine for a Go repo", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-go");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(spine.supportedLanguages).toEqual(["go"]);
+    expect(spine.entrySeeds).toEqual(["main.go"]);
+    expect(spine.nodes).toEqual([
+      "main.go",
+      "config/config.go",
+      "routes/routes.go",
+      "service/service.go",
+      "store/store.go"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "main.go", to: "config/config.go", kind: "import" },
+      { from: "main.go", to: "routes/routes.go", kind: "import" },
+      { from: "routes/routes.go", to: "service/service.go", kind: "import" },
+      { from: "service/service.go", to: "store/store.go", kind: "import" }
+    ]);
+  });
 });

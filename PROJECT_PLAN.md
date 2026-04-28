@@ -127,6 +127,7 @@ $ claude /onboard
 - [x] Added first-pass Python verified import tracing
 - [x] Added coverage for Python `src/` layout imports discovered during benchmark testing
 - [x] Added first-pass Rust verified module tracing
+- [x] Added first-pass Go verified import tracing from local module imports
 - [x] Verified the current scaffold with `npm run check`, `npm run test`, and `npm run onboard -- .`
 
 ### In progress conceptually
@@ -137,8 +138,8 @@ $ claude /onboard
 - [x] Verified Python import-edge extraction
 - [x] Spine tracing from Rust entry points
 - [x] Verified Rust module-edge extraction
-- [ ] Spine tracing from Go entry points
-- [ ] Verified edge extraction for Go
+- [x] Spine tracing from Go entry points
+- [x] Verified edge extraction for Go
 - [ ] Subsystem clustering
 - [ ] Final markdown contract
 - [ ] Mermaid parse validation
@@ -172,12 +173,12 @@ Checklist:
 
 - [x] Parse imports and requires for TS/JS
 - [x] Parse imports for Python
-- [ ] Parse module/file references for Go
+- [x] Parse module/file references for Go
 - [x] Parse module references for Rust
-- [x] Walk outward from TS/JS and Python entry points at shallow depth
-- [x] Score TS/JS and Python files by reach from entry points
-- [x] Select the first 5-7 TS/JS and Python spine nodes
-- [x] Build verified edges only between selected TS/JS and Python nodes
+- [x] Walk outward from TS/JS, Python, Rust, and Go entry points at shallow depth
+- [x] Score TS/JS, Python, Rust, and Go files by reach from entry points
+- [x] Select the first 5-7 TS/JS, Python, Rust, and Go spine nodes
+- [x] Build verified edges only between selected TS/JS, Python, Rust, and Go nodes
 - [x] Build verified edges only between selected Rust nodes
 - [ ] Drop unresolved or speculative edges
 - [ ] Add tests proving every retained edge exists in source
@@ -292,7 +293,7 @@ Use this as the day-to-day implementation checklist.
 - [x] TS/JS spine tracer implemented
 - [x] TS/JS verified edge builder implemented
 - [x] Python spine tracer implemented
-- [ ] Go spine tracer implemented
+- [x] Go spine tracer implemented
 - [x] Rust spine tracer implemented
 - [ ] Subsystem clustering implemented
 - [ ] Mermaid generator implemented
