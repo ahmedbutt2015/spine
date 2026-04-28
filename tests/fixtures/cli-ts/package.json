@@ -1,0 +1,7 @@
+{
+  "name": "cli-ts",
+  "private": true,
+  "bin": "./dist/cli.js",
+  "type": "module"
+}
+

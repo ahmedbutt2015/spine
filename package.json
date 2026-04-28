@@ -1,0 +1,43 @@
+{
+  "name": "spine",
+  "version": "0.1.0",
+  "description": "Generate a personalized reading tour and verified architecture spine for any codebase.",
+  "type": "module",
+  "bin": {
+    "onboard": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    ".claude-plugin"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit",
+    "onboard": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "claude-code",
+    "codebase",
+    "developer-tools",
+    "documentation",
+    "onboarding"
+  ],
+  "author": "Ahmed Butt",
+  "license": "MIT",
+  "dependencies": {
+    "@mermaid-js/parser": "^0.6.3",
+    "pako": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
+

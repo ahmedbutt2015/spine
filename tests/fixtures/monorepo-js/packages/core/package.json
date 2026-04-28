@@ -1,0 +1,6 @@
+{
+  "name": "@repo/core",
+  "private": true,
+  "main": "src/index.ts"
+}
+
