@@ -2,6 +2,8 @@
 
 `spine` is the repo behind the `/onboard` Claude Code command: a codebase onboarding tool that produces an ordered reading tour, a mental model, gotchas, and a small verified architecture diagram.
 
+The detailed product brief, milestone plan, and implementation checklist live in [PROJECT_PLAN.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/PROJECT_PLAN.md).
+
 ## Product shape
 
 - Repo name: `spine`
@@ -35,4 +37,3 @@ That writes `ONBOARDING.md` into the target repo root.
 3. Mermaid validation plus `mermaid.live` URL generation
 4. LLM synthesis over the verified structure
 5. Fixture snapshots for famous repos
-
