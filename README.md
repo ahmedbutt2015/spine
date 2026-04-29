@@ -19,7 +19,8 @@ The first implementation slice is in place:
 - Find likely entry points across TS/JS, Python, Go, and Rust
 - Extract a verified spine across TS/JS, Python, Go, and Rust
 - Generate a validated Mermaid diagram plus `mermaid.live` link
-- Write `ONBOARDING.md` with a deterministic reading order and architecture map
+- Cluster non-spine files into subsystems
+- Write `ONBOARDING.md` with a constrained synthesis layer and architecture map
 
 ## Development
 
@@ -30,6 +31,18 @@ npm run onboard -- .
 ```
 
 That writes `ONBOARDING.md` into the target repo root.
+
+To inspect the exact LLM-safe synthesis prompt:
+
+```bash
+npm run onboard -- . --prompt-out .onboard-prompt.txt
+```
+
+To use an external synthesis command that reads the prompt on stdin and returns JSON:
+
+```bash
+npm run onboard -- . --synthesis-command "your-command-here"
+```
 
 ## Benchmarks
 

@@ -7,12 +7,26 @@ Use this skill from a repository root to generate an onboarding tour for an unfa
 1. Run the deterministic scanner to detect repo shape and entry points.
 2. Extract a verified spine from supported local language relationships.
 3. Generate and validate a Mermaid diagram from the verified spine.
-4. Write `ONBOARDING.md` into the target repo root.
+4. Cluster the remaining files into heuristic subsystems.
+5. Build a synthesis prompt that only contains verified structure and short code signatures.
+6. Write `ONBOARDING.md` into the target repo root.
 
 ## Local command
 
 ```bash
 npm run onboard -- .
+```
+
+Optional prompt export:
+
+```bash
+npm run onboard -- . --prompt-out .onboard-prompt.txt
+```
+
+Optional external synthesis command:
+
+```bash
+npm run onboard -- . --synthesis-command "your-command-here"
 ```
 
 ## Product contract
@@ -24,7 +38,7 @@ npm run onboard -- .
 
 ## Next implementation targets
 
-1. Subsystem clustering
-2. Better reading-order heuristics
-3. LLM synthesis over verified structure only
-4. Snapshot coverage across more real repos
+1. Better subsystem heuristics for very large repos
+2. Stronger reading-order explanations
+3. Snapshot coverage across more real repos
+4. Public launch polish

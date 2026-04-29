@@ -5,6 +5,7 @@ import pako from "pako";
 import { describe, expect, it } from "vitest";
 
 import { analyzeRepository } from "../src/core/analyze.js";
+import { synthesizeTour } from "../src/core/synthesis.js";
 import { renderOnboardingMarkdown } from "../src/formatters/onboarding.js";
 
 const fixturesRoot = path.resolve(import.meta.dirname, "fixtures");
@@ -63,7 +64,8 @@ describe("generateArchitectureDiagram", () => {
 
   it("renders the validated diagram and link into ONBOARDING markdown", async () => {
     const result = await analyzeRepository(path.join(fixturesRoot, "spine-python"));
-    const markdown = renderOnboardingMarkdown(result);
+    const synthesis = await synthesizeTour(path.join(fixturesRoot, "spine-python"), result);
+    const markdown = renderOnboardingMarkdown(result, synthesis);
 
     expect(markdown).toContain("```mermaid");
     expect(markdown).toContain("View / edit on [mermaid.live](");

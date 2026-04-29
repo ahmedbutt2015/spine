@@ -6,6 +6,7 @@ import { generateArchitectureDiagram } from "./diagram.js";
 import { findEntryPoints } from "./entries.js";
 import { pathExists } from "./repository.js";
 import { extractVerifiedSpine } from "./spine.js";
+import { clusterSubsystems } from "./subsystems.js";
 
 async function collectReadingOrder(
   rootPath: string,
@@ -42,6 +43,7 @@ export async function analyzeRepository(rootPath: string): Promise<AnalysisResul
   const entryPoints = await findEntryPoints(rootPath, detection);
   const spine = await extractVerifiedSpine(rootPath, entryPoints);
   const diagram = await generateArchitectureDiagram(spine);
+  const subsystems = await clusterSubsystems(rootPath, spine.nodes, entryPoints);
   const suggestedReadingOrder = await collectReadingOrder(
     rootPath,
     entryPoints.map((entryPoint) => entryPoint.path),
@@ -53,6 +55,7 @@ export async function analyzeRepository(rootPath: string): Promise<AnalysisResul
     entryPoints,
     spine,
     diagram,
+    subsystems,
     suggestedReadingOrder
   };
 }

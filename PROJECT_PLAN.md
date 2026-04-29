@@ -129,6 +129,8 @@ $ claude /onboard
 - [x] Added first-pass Rust verified module tracing
 - [x] Added first-pass Go verified import tracing from local module imports
 - [x] Added validated Mermaid diagram generation and `mermaid.live` links
+- [x] Added heuristic subsystem clustering for non-spine files
+- [x] Added a verified-data-only synthesis prompt and executor path
 - [x] Verified the current scaffold with `npm run check`, `npm run test`, and `npm run onboard -- .`
 
 ### In progress conceptually
@@ -141,11 +143,11 @@ $ claude /onboard
 - [x] Verified Rust module-edge extraction
 - [x] Spine tracing from Go entry points
 - [x] Verified edge extraction for Go
-- [ ] Subsystem clustering
+- [x] Subsystem clustering
 - [x] Final markdown contract for architecture map section
 - [x] Mermaid parse validation
 - [x] `mermaid.live` URL generation
-- [ ] LLM synthesis constrained by verified data only
+- [x] LLM synthesis constrained by verified data only
 
 ## Milestones
 
@@ -204,29 +206,29 @@ Checklist:
 
 Goal: make the output feel genuinely useful for a developer opening a strange repo.
 
-Status: not started
+Status: in progress
 
 Checklist:
 
-- [ ] Cluster non-spine files into subsystems
-- [ ] Label clusters with heuristics
-- [ ] Choose one file per subsystem as the read-first file
-- [ ] Improve reading order beyond raw file existence
-- [ ] Estimate read time based on output size and spine depth
+- [x] Cluster non-spine files into subsystems
+- [x] Label clusters with heuristics
+- [x] Choose one file per subsystem as the read-first file
+- [x] Improve reading order beyond raw file existence
+- [x] Estimate read time based on output size and spine depth
 - [ ] Expand fixture repos to cover more codebase shapes
 
 ### Milestone 5: LLM-constrained synthesis
 
 Goal: let the LLM write clearly without letting it hallucinate architecture.
 
-Status: not started
+Status: in progress
 
 Checklist:
 
-- [ ] Define the runtime prompt for `/onboard`
-- [ ] Feed only verified structure plus small code excerpts
-- [ ] Prevent the model from inventing edges
-- [ ] Regenerate markdown if contract sections are missing
+- [x] Define the runtime prompt for `/onboard`
+- [x] Feed only verified structure plus small code excerpts
+- [x] Prevent the model from inventing edges
+- [x] Regenerate via deterministic fallback if synthesis output is invalid
 - [ ] Add snapshot tests for final `ONBOARDING.md`
 
 ### Milestone 6: Launch readiness
@@ -246,23 +248,21 @@ Checklist:
 
 ## What should happen next
 
-The highest-value next step is Milestone 2.
+The highest-value next step is output quality hardening.
 
 Why:
 
-- The verified spine is the product's technical moat
-- The diagram depends on it
-- The final LLM prompt depends on it
-- Without verified edges, the product is still only a smart repo scanner
+- The verified spine, diagram, subsystem pass, and constrained synthesis path are now present
+- The biggest remaining risk is output quality on larger real repos
+- Snapshot coverage and more benchmark fixtures will expose weak spots faster than adding new surface area
 
 Recommended next implementation order:
 
-1. Build the import/reference graph for TS/JS first
-2. Add shallow traversal and scoring from entry points
-3. Select the 5-7 node spine
-4. Emit verified edge sets
-5. Add diagram generation on top of that
-6. Then bring in the LLM for prose synthesis
+1. Add final `ONBOARDING.md` snapshot tests across fixture repos
+2. Expand benchmark coverage for bigger repos and edge cases
+3. Tighten subsystem heuristics where outputs are still noisy
+4. Improve read-time and reading-order quality
+5. Add launch polish once outputs are consistently strong
 
 ## Risks and product traps
 
@@ -296,11 +296,11 @@ Use this as the day-to-day implementation checklist.
 - [x] Python spine tracer implemented
 - [x] Go spine tracer implemented
 - [x] Rust spine tracer implemented
-- [ ] Subsystem clustering implemented
+- [x] Subsystem clustering implemented
 - [ ] Mermaid generator implemented
 - [x] Mermaid validator implemented
 - [x] `mermaid.live` encoder implemented
-- [ ] Final markdown contract implemented
-- [ ] Runtime prompt written
+- [x] Final markdown contract implemented
+- [x] Runtime prompt written
 - [ ] Snapshot suite expanded
 - [ ] Public launch polish completed

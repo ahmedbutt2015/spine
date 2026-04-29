@@ -1,4 +1,4 @@
-import type { AnalysisResult, EntryPoint } from "../types.js";
+import type { AnalysisResult, EntryPoint, TourSynthesis } from "../types.js";
 
 function formatEntryPointReason(entryPoint: EntryPoint): string {
   return `${entryPoint.path} - ${entryPoint.reason}`;
@@ -21,22 +21,38 @@ function renderMentalModel(result: AnalysisResult): string {
   }
 }
 
-export function renderOnboardingMarkdown(result: AnalysisResult): string {
-  const tlDr = [
-    `This repository looks like a ${result.detection.shape} codebase built primarily in ${result.detection.languages.join(", ")}.`,
-    `The most likely starting points are ${result.entryPoints.slice(0, 3).map((entryPoint) => `\`${entryPoint.path}\``).join(", ") || "still being determined"}.`,
-    `This pass is deterministic and now includes verified spine extraction plus validated diagram generation for supported languages; broader synthesis still comes next.`
-  ].join(" ");
+function renderSubsystems(synthesis: TourSynthesis): string {
+  if (synthesis.subsystems.length === 0) {
+    return "- No subsystem clusters were strong enough to report yet.";
+  }
 
-  const readingOrder = result.suggestedReadingOrder.length
-    ? result.suggestedReadingOrder.map((filePath) => `- \`${filePath}\` - Read this early because it either starts the program or defines a key project contract.`).join("\n")
+  return synthesis.subsystems
+    .map((subsystem) =>
+      [
+        `### ${subsystem.label}`,
+        `What it does: ${subsystem.whatItDoes}`,
+        `Where it lives: \`${subsystem.whereItLives}\``,
+        `Entry point: ${subsystem.entryPoint ? `\`${subsystem.entryPoint}\`` : "None identified"}`,
+        `Skip unless: ${subsystem.skipUnless}`
+      ].join("\n")
+    )
+    .join("\n\n");
+}
+
+function formatHours(hours: number): string {
+  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+}
+
+export function renderOnboardingMarkdown(result: AnalysisResult, synthesis: TourSynthesis): string {
+  const readingOrder = synthesis.readingOrder.length
+    ? synthesis.readingOrder.map((item) => `- \`${item.path}\` - ${item.why}`).join("\n")
     : "- No reading order found yet.";
 
   const entryPoints = result.entryPoints.length
     ? result.entryPoints.map((entryPoint) => `- ${formatEntryPointReason(entryPoint)}`).join("\n")
     : "- No entry points detected.";
 
-  const gotchas = result.detection.reasons.map((reason) => `- ${reason}`).join("\n");
+  const gotchas = synthesis.gotchas.map((reason) => `- ${reason}`).join("\n");
   const architectureMap = result.diagram
     ? [
         "```mermaid",
@@ -62,13 +78,13 @@ export function renderOnboardingMarkdown(result: AnalysisResult): string {
   return `# Onboarding tour: ${result.detection.repoName}
 
 ## TL;DR
-${tlDr}
+${synthesis.tlDr}
 
 ## Architecture map
 ${architectureMap}
 
 ## Mental model
-${renderMentalModel(result)}
+${synthesis.mentalModel || renderMentalModel(result)}
 
 ## Reading order
 ${readingOrder}
@@ -77,12 +93,12 @@ ${readingOrder}
 ${entryPoints}
 
 ## Subsystems
-- Not clustered yet. Directory-based subsystem grouping lands in the next stage.
+${renderSubsystems(synthesis)}
 
 ## Gotchas
 ${gotchas || "- No gotchas yet."}
 
 ## Estimated read time
-10-20 minutes for the current deterministic scan, with deeper subsystem synthesis still pending.
+${synthesis.estimatedReadTime.spineMinutes} minutes for the spine, ${formatHours(synthesis.estimatedReadTime.fullCoverageHours)} for fuller coverage.
 `;
 }

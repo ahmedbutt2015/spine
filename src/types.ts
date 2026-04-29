@@ -62,10 +62,50 @@ export interface ArchitectureDiagram {
   nodes: DiagramNodeRef[];
 }
 
+export interface SubsystemCluster {
+  key: string;
+  label: string;
+  files: string[];
+  pathGlob: string;
+  entryPoint: string | null;
+  whatItDoes: string;
+  skipUnless: string;
+}
+
+export interface ReadingOrderItem {
+  path: string;
+  why: string;
+}
+
+export interface SubsystemSummary {
+  label: string;
+  whatItDoes: string;
+  whereItLives: string;
+  entryPoint: string | null;
+  skipUnless: string;
+}
+
+export interface EstimatedReadTime {
+  spineMinutes: number;
+  fullCoverageHours: number;
+}
+
+export interface TourSynthesis {
+  source: "deterministic" | "llm";
+  prompt: string;
+  tlDr: string;
+  mentalModel: string;
+  readingOrder: ReadingOrderItem[];
+  subsystems: SubsystemSummary[];
+  gotchas: string[];
+  estimatedReadTime: EstimatedReadTime;
+}
+
 export interface AnalysisResult {
   detection: ProjectDetection;
   entryPoints: EntryPoint[];
   spine: SpineAnalysis;
   diagram: ArchitectureDiagram | null;
+  subsystems: SubsystemCluster[];
   suggestedReadingOrder: string[];
 }
