@@ -9,21 +9,28 @@ interface PackageJsonShape {
   exports?: Record<string, unknown> | string;
 }
 
-async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string): Promise<string> {
+async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string): Promise<string | null> {
   if (await pathExists(path.join(rootPath, declaredPath))) {
     return declaredPath;
   }
 
-  const candidates = [
-    declaredPath
-      .replace(/^\.\/dist\//, "src/")
-      .replace(/^dist\//, "src/")
-      .replace(/\.js$/, ".ts"),
-    declaredPath
-      .replace(/^\.\/dist\//, "src/")
-      .replace(/^dist\//, "src/")
-      .replace(/\.cjs$|\.mjs$/, ".ts")
+  const sourceRoots = ["src/", "lib/"];
+  const extensionSwaps: Array<[RegExp, string]> = [
+    [/\.cjs$/, ".ts"],
+    [/\.mjs$/, ".ts"],
+    [/\.js$/, ".ts"],
+    [/\.cjs$/, ".js"],
+    [/\.mjs$/, ".js"]
   ];
+
+  const candidates = new Set<string>();
+  const stripped = declaredPath.replace(/^\.\/dist\//, "").replace(/^dist\//, "");
+  for (const sourceRoot of sourceRoots) {
+    for (const [pattern, replacement] of extensionSwaps) {
+      candidates.add(`${sourceRoot}${stripped}`.replace(pattern, replacement));
+    }
+    candidates.add(`${sourceRoot}${stripped}`);
+  }
 
   for (const candidate of candidates) {
     if (candidate !== declaredPath && (await pathExists(path.join(rootPath, candidate)))) {
@@ -31,7 +38,7 @@ async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string):
     }
   }
 
-  return declaredPath;
+  return null;
 }
 
 function dedupeEntryPoints(entryPoints: EntryPoint[]): EntryPoint[] {
@@ -94,34 +101,36 @@ export async function findEntryPoints(
   const entryPoints: EntryPoint[] = [];
 
   const packageJson = await readJsonIfExists<PackageJsonShape>(path.join(rootPath, "package.json"));
-  if (typeof packageJson?.bin === "string") {
-    const resolvedPath = await resolveDeclaredEntryPath(rootPath, packageJson.bin);
+  const declaredBins =
+    typeof packageJson?.bin === "string"
+      ? [packageJson.bin]
+      : packageJson?.bin
+        ? Object.values(packageJson.bin)
+        : [];
+
+  for (const binPath of declaredBins) {
+    const resolvedPath = await resolveDeclaredEntryPath(rootPath, binPath);
+    if (!resolvedPath) {
+      continue;
+    }
     entryPoints.push({
       path: resolvedPath,
       language: resolvedPath.endsWith(".ts") ? "typescript" : "javascript",
       kind: "cli",
       reason: "Declared as package.json bin."
     });
-  } else if (packageJson?.bin) {
-    for (const binPath of Object.values(packageJson.bin)) {
-      const resolvedPath = await resolveDeclaredEntryPath(rootPath, binPath);
-      entryPoints.push({
-        path: resolvedPath,
-        language: resolvedPath.endsWith(".ts") ? "typescript" : "javascript",
-        kind: "cli",
-        reason: "Declared as package.json bin."
-      });
-    }
   }
 
   if (typeof packageJson?.main === "string") {
     const resolvedPath = await resolveDeclaredEntryPath(rootPath, packageJson.main);
-    entryPoints.push({
-      path: resolvedPath,
-      language: resolvedPath.endsWith(".ts") ? "typescript" : "javascript",
-      kind: "library",
-      reason: "Declared as package.json main."
-    });
+    if (resolvedPath) {
+      entryPoints.push({
+        path: resolvedPath,
+        language: resolvedPath.endsWith(".ts") ? "typescript" : "javascript",
+        kind: "library",
+        reason: "Declared as package.json main."
+      });
+    }
   }
 
   await addIfExists(rootPath, entryPoints, "src/index.ts", "typescript", "Conventional TypeScript module entry.");

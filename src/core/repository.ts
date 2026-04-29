@@ -93,6 +93,10 @@ export async function walkRepositoryFiles(rootPath: string, maxFiles = 2000): Pr
       const absolutePath = path.join(currentPath, entry.name);
       const relativePath = path.relative(rootPath, absolutePath);
 
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
+
       if (entry.isDirectory()) {
         if (SKIP_DIRECTORIES.has(entry.name)) {
           continue;
@@ -101,6 +105,10 @@ export async function walkRepositoryFiles(rootPath: string, maxFiles = 2000): Pr
           continue;
         }
         await visit(absolutePath);
+        continue;
+      }
+
+      if (!entry.isFile()) {
         continue;
       }
 

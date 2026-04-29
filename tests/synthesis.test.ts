@@ -8,6 +8,20 @@ import { buildSynthesisPrompt, synthesizeTour } from "../src/core/synthesis.js";
 const fixturesRoot = path.resolve(import.meta.dirname, "fixtures");
 
 describe("subsystem clustering and synthesis", () => {
+  it("keeps HTML pages and components in clusters but drops font assets", async () => {
+    const result = await analyzeRepository(path.join(fixturesRoot, "html-frontend"));
+    const clusterFiles = result.subsystems.flatMap((cluster) => cluster.files);
+
+    expect(clusterFiles).toContain("public/index.html");
+    expect(clusterFiles).toContain("public/about.html");
+    expect(clusterFiles).toContain("src/components/Header.html");
+    expect(clusterFiles).toContain("src/components/Footer.html");
+    expect(clusterFiles.some((file) => file.endsWith(".woff2"))).toBe(false);
+
+    const publicCluster = result.subsystems.find((cluster) => cluster.key === "public");
+    expect(publicCluster?.entryPoint).toBe("public/index.html");
+  });
+
   it("clusters non-spine files into subsystem summaries", async () => {
     const result = await analyzeRepository(path.join(fixturesRoot, "spine-ts"));
 

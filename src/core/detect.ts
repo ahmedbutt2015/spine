@@ -104,7 +104,7 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
   const packageJsonPath = path.join(rootPath, "package.json");
   const packageJson = await readJsonIfExists<PackageJsonShape>(packageJsonPath);
   const pyproject = await pathExists(path.join(rootPath, "pyproject.toml"));
-  const cargoToml = await pathExists(path.join(rootPath, "Cargo.toml"));
+  const cargoToml = await readTextIfExists(path.join(rootPath, "Cargo.toml"));
   const goMod = await pathExists(path.join(rootPath, "go.mod"));
   const nextConfig =
     (await pathExists(path.join(rootPath, "next.config.js"))) ||
@@ -112,13 +112,20 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     (await pathExists(path.join(rootPath, "next.config.ts")));
   const requirements = await pathExists(path.join(rootPath, "requirements.txt"));
   const pnpmWorkspace = await readTextIfExists(path.join(rootPath, "pnpm-workspace.yaml"));
+  const rustLibFile = await pathExists(path.join(rootPath, "src/lib.rs"));
+  const rustMainFile = await pathExists(path.join(rootPath, "src/main.rs"));
+  const cargoDeclaresLib = Boolean(cargoToml?.match(/^\s*\[lib\]/m));
+  const cargoDeclaresWorkspace = Boolean(cargoToml?.match(/^\s*\[workspace\]/m));
 
   const workspaceArray = Array.isArray(packageJson?.workspaces)
     ? packageJson.workspaces
     : packageJson?.workspaces?.packages;
-  const hasWorkspaces = Boolean(workspaceArray?.length || pnpmWorkspace);
+  const hasWorkspaces = Boolean(workspaceArray?.length || pnpmWorkspace || cargoDeclaresWorkspace);
   const hasCliBin = Boolean(packageJson?.bin) || (await pathExists(path.join(rootPath, "bin")));
-  const hasLibraryExports = Boolean(packageJson?.exports || packageJson?.main);
+  const hasLibraryExports =
+    Boolean(packageJson?.exports || packageJson?.main) ||
+    (rustLibFile && !rustMainFile) ||
+    cargoDeclaresLib;
   const { shape, reasons } = pickShape({
     hasWorkspaces,
     hasFrameworkConfig: nextConfig,
@@ -132,7 +139,7 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     packageJson ? "package.json" : null,
     pyproject ? "pyproject.toml" : null,
     requirements ? "requirements.txt" : null,
-    cargoToml ? "Cargo.toml" : null,
+    cargoToml !== null ? "Cargo.toml" : null,
     goMod ? "go.mod" : null,
     pnpmWorkspace ? "pnpm-workspace.yaml" : null
   ].filter((value): value is string => Boolean(value));

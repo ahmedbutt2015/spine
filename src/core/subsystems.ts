@@ -15,13 +15,35 @@ const NON_SUBSYSTEM_ROOT_FILES = new Set([
 ]);
 
 const NON_SUBSYSTEM_EXTENSIONS = new Set([
+  ".crt",
+  ".csv",
   ".gif",
+  ".ico",
   ".jpg",
   ".jpeg",
+  ".key",
   ".lock",
+  ".pem",
   ".png",
   ".sum",
-  ".svg"
+  ".svg",
+  ".webp",
+  ".woff",
+  ".woff2"
+]);
+
+const SOURCE_EXTENSIONS_FOR_CLUSTER_ENTRY = new Set([
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".py",
+  ".rs",
+  ".go"
 ]);
 
 const LABEL_COPY: Record<string, { label: string; whatItDoes: string; skipUnless: string }> = {
@@ -182,18 +204,40 @@ function shouldIncludeInSubsystems(filePath: string): boolean {
   return true;
 }
 
-function chooseClusterEntryPoint(files: string[], entryPoints: EntryPoint[]): string | null {
+function chooseClusterEntryPoint(
+  files: string[],
+  entryPoints: EntryPoint[],
+  clusterKey: string
+): string | null {
   const entryPaths = new Set(entryPoints.map((entryPoint) => entryPoint.path));
   const directEntry = files.find((filePath) => entryPaths.has(filePath));
   if (directEntry) {
     return directEntry;
   }
 
-  const preferred = files.find((filePath) =>
-    /(index|main|app|router|routes|config|mod)\.[^.]+$/.test(filePath)
+  const preferDocFiles = clusterKey === "docs";
+  const sourceFiles = files.filter((filePath) =>
+    SOURCE_EXTENSIONS_FOR_CLUSTER_ENTRY.has(path.posix.extname(filePath).toLowerCase())
   );
+  const candidatePool = preferDocFiles || sourceFiles.length === 0 ? files : sourceFiles;
 
-  return preferred ?? files[0] ?? null;
+  const matchesClusterName = candidatePool.find((filePath) => {
+    const basename = path.posix.basename(filePath).toLowerCase();
+    const stem = basename.replace(/\.[^.]+$/, "");
+    return stem === clusterKey;
+  });
+  if (matchesClusterName) {
+    return matchesClusterName;
+  }
+
+  const conventionalEntry = candidatePool.find((filePath) =>
+    /(index|main|app|router|routes|config|mod|lib)\.[^.]+$/.test(filePath)
+  );
+  if (conventionalEntry) {
+    return conventionalEntry;
+  }
+
+  return candidatePool[0] ?? files[0] ?? null;
 }
 
 export async function clusterSubsystems(
@@ -234,7 +278,7 @@ export async function clusterSubsystems(
         label: copy.label,
         files: sortedFiles,
         pathGlob: inferPathGlob(sortedFiles),
-        entryPoint: chooseClusterEntryPoint(sortedFiles, entryPoints),
+        entryPoint: chooseClusterEntryPoint(sortedFiles, entryPoints, key),
         whatItDoes: copy.whatItDoes,
         skipUnless: copy.skipUnless
       };

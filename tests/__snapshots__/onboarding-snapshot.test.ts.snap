@@ -183,7 +183,7 @@ exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-
 "# Onboarding tour: spine-rust
 
 ## TL;DR
-This repository is a app built primarily in rust. The verified spine currently runs through \`src/lib.rs\`, \`src/config.rs\`, \`src/routes/mod.rs\`. The architecture diagram is derived from verified static-analysis edges only.
+This repository is a library built primarily in rust. The verified spine currently runs through \`src/lib.rs\`, \`src/config.rs\`, \`src/routes/mod.rs\`. The architecture diagram is derived from verified static-analysis edges only.
 
 ## Architecture map
 \`\`\`mermaid
@@ -211,7 +211,7 @@ Legend:
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
 
 ## Reading order
 - \`src/lib.rs\` - This is a detected entry point, so it shows how execution begins.
@@ -228,7 +228,7 @@ Follow the first verified handoff from the entry point into the main runtime pat
 - No subsystem clusters were strong enough to report yet.
 
 ## Gotchas
-- Defaulted to app after manifest and file scan.
+- Detected package exports or main entry.
 - The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
 - Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
 
