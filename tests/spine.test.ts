@@ -104,6 +104,24 @@ describe("extractVerifiedSpine", () => {
     ]);
   });
 
+  it("resolves TypeScript imports through tsconfig path aliases", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-ts-paths");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(spine.entrySeeds).toEqual(["src/index.ts"]);
+    expect(spine.nodes).toEqual([
+      "src/index.ts",
+      "src/services/user-service.ts",
+      "src/utils/index.ts"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "src/index.ts", to: "src/services/user-service.ts", kind: "import" },
+      { from: "src/index.ts", to: "src/utils/index.ts", kind: "import" },
+      { from: "src/services/user-service.ts", to: "src/utils/index.ts", kind: "import" }
+    ]);
+  });
+
   it("builds a verified import-only spine for a Go repo", async () => {
     const rootPath = path.join(fixturesRoot, "spine-go");
     const entryPoints = await findEntryPoints(rootPath);

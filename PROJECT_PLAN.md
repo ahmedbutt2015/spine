@@ -264,6 +264,31 @@ Recommended next implementation order:
 4. Improve read-time and reading-order quality
 5. Add launch polish once outputs are consistently strong
 
+## Future ideas
+
+### Per-repo knowledge file for Claude
+
+Idea: have `/onboard` (or a companion command) drop a persistent knowledge file at the repo root — for example `.claude/REPO_CONTEXT.md` or reuse the generated `ONBOARDING.md` — so any subsequent Claude task in that repository starts with a verified mental model already loaded.
+
+Behavior:
+
+- On first run in a repo, generate and save the file if not present
+- On later runs, detect the existing file and refresh it instead of regenerating from scratch
+- File should be lightweight enough to fit in Claude's auto-loaded context (e.g. CLAUDE.md-compatible)
+- Optional: include a content hash or last-scanned commit so Claude can tell when the snapshot is stale
+
+Why it matters:
+
+- Removes the cold-start cost on every new conversation in the same repo
+- Gives Claude verified spine/edges/subsystems instead of letting it re-derive (and possibly hallucinate) them each time
+- Turns `/onboard` from a one-shot report into ongoing repo memory
+
+Open questions:
+
+- Where to save (repo root vs. `.claude/` vs. user-level memory)
+- Whether to commit the file or gitignore it by default
+- How to invalidate when the codebase drifts significantly from the snapshot
+
 ## Risks and product traps
 
 - The diagram gets too big and turns into a map instead of a spine

@@ -2,7 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { DetectedLanguage, EntryPoint, SpineAnalysis, VerifiedEdge } from "../types.js";
-import { pathExists, readTextIfExists, walkRepositoryFiles } from "./repository.js";
+import { pathExists, readJsonIfExists, readTextIfExists, walkRepositoryFiles } from "./repository.js";
+
+interface TsconfigPathConfig {
+  baseUrl: string;
+  paths: Array<{ pattern: string; replacements: string[] }>;
+}
 
 const SUPPORTED_SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 const SOURCE_EXTENSION_SET = new Set(SUPPORTED_SOURCE_EXTENSIONS);
@@ -160,19 +165,63 @@ function collectGoImportSpecifiers(source: string): string[] {
   return matches;
 }
 
-async function resolveLocalImport(
-  rootPath: string,
-  fromPath: string,
-  specifier: string
-): Promise<string | null> {
-  if (!specifier.startsWith(".")) {
+async function loadTsconfigPathConfig(rootPath: string): Promise<TsconfigPathConfig | null> {
+  const tsconfig = await readJsonIfExists<{
+    compilerOptions?: {
+      baseUrl?: string;
+      paths?: Record<string, string[]>;
+    };
+  }>(path.join(rootPath, "tsconfig.json"));
+
+  const paths = tsconfig?.compilerOptions?.paths;
+  if (!paths) {
     return null;
   }
 
-  const fromDirectory = path.dirname(fromPath);
-  const baseTarget = normalizeRelativePath(path.posix.normalize(path.posix.join(fromDirectory, specifier)));
+  const baseUrl = tsconfig?.compilerOptions?.baseUrl ?? ".";
+
+  return {
+    baseUrl: normalizeRelativePath(path.posix.normalize(baseUrl)),
+    paths: Object.entries(paths).map(([pattern, replacements]) => ({
+      pattern,
+      replacements
+    }))
+  };
+}
+
+function expandAliasedSpecifier(specifier: string, config: TsconfigPathConfig): string[] {
+  const candidates: string[] = [];
+
+  for (const { pattern, replacements } of config.paths) {
+    if (pattern.endsWith("/*")) {
+      const prefix = pattern.slice(0, -2);
+      if (specifier !== prefix && !specifier.startsWith(`${prefix}/`)) {
+        continue;
+      }
+
+      const suffix = specifier === prefix ? "" : specifier.slice(prefix.length + 1);
+      for (const replacement of replacements) {
+        if (replacement.endsWith("/*")) {
+          const base = replacement.slice(0, -2);
+          candidates.push(suffix ? `${base}/${suffix}` : base);
+        } else {
+          candidates.push(replacement);
+        }
+      }
+      continue;
+    }
+
+    if (pattern === specifier) {
+      candidates.push(...replacements);
+    }
+  }
+
+  return candidates;
+}
+
+function buildImportCandidates(baseTarget: string): Set<string> {
   const baseWithoutExtension = baseTarget.replace(/\.[^.\/]+$/, "");
-  const candidates = new Set<string>([
+  return new Set<string>([
     baseTarget,
     `${baseWithoutExtension}.ts`,
     `${baseWithoutExtension}.tsx`,
@@ -199,7 +248,9 @@ async function resolveLocalImport(
     `${baseWithoutExtension}/index.mjs`,
     `${baseWithoutExtension}/index.cjs`
   ]);
+}
 
+async function firstExistingCandidate(rootPath: string, candidates: Iterable<string>): Promise<string | null> {
   for (const candidate of candidates) {
     if (!isSourceFile(candidate)) {
       continue;
@@ -213,11 +264,41 @@ async function resolveLocalImport(
   return null;
 }
 
+async function resolveLocalImport(
+  rootPath: string,
+  fromPath: string,
+  specifier: string,
+  tsconfig: TsconfigPathConfig | null
+): Promise<string | null> {
+  if (specifier.startsWith(".")) {
+    const fromDirectory = path.dirname(fromPath);
+    const baseTarget = normalizeRelativePath(path.posix.normalize(path.posix.join(fromDirectory, specifier)));
+    return firstExistingCandidate(rootPath, buildImportCandidates(baseTarget));
+  }
+
+  if (!tsconfig) {
+    return null;
+  }
+
+  for (const replacement of expandAliasedSpecifier(specifier, tsconfig)) {
+    const baseTarget = normalizeRelativePath(
+      path.posix.normalize(path.posix.join(tsconfig.baseUrl, replacement))
+    );
+    const resolved = await firstExistingCandidate(rootPath, buildImportCandidates(baseTarget));
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return null;
+}
+
 async function buildImportGraph(
   rootPath: string,
   candidateFiles: Set<string>
 ): Promise<Map<string, Set<string>>> {
   const graph = new Map<string, Set<string>>();
+  const tsconfig = await loadTsconfigPathConfig(rootPath);
 
   for (const filePath of candidateFiles) {
     const absolutePath = path.join(rootPath, filePath);
@@ -226,7 +307,7 @@ async function buildImportGraph(
     const resolvedImports = new Set<string>();
 
     for (const specifier of imports) {
-      const resolved = await resolveLocalImport(rootPath, filePath, specifier);
+      const resolved = await resolveLocalImport(rootPath, filePath, specifier, tsconfig);
       if (resolved && candidateFiles.has(resolved)) {
         resolvedImports.add(resolved);
       }

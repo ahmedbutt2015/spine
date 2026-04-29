@@ -59,6 +59,22 @@ export async function listTopLevelDirectories(rootPath: string): Promise<string[
     .sort();
 }
 
+async function isVendoredDirectory(directoryPath: string): Promise<boolean> {
+  const gitignore = await readTextIfExists(path.join(directoryPath, ".gitignore"));
+  if (!gitignore) {
+    return false;
+  }
+
+  for (const rawLine of gitignore.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line === "*") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function walkRepositoryFiles(rootPath: string, maxFiles = 2000): Promise<RepoFile[]> {
   const results: RepoFile[] = [];
 
@@ -78,9 +94,13 @@ export async function walkRepositoryFiles(rootPath: string, maxFiles = 2000): Pr
       const relativePath = path.relative(rootPath, absolutePath);
 
       if (entry.isDirectory()) {
-        if (!SKIP_DIRECTORIES.has(entry.name)) {
-          await visit(absolutePath);
+        if (SKIP_DIRECTORIES.has(entry.name)) {
+          continue;
         }
+        if (await isVendoredDirectory(absolutePath)) {
+          continue;
+        }
+        await visit(absolutePath);
         continue;
       }
 

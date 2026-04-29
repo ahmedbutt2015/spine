@@ -1,0 +1,6 @@
+{
+  "name": "spine-ts-paths-fixture",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts"
+}
