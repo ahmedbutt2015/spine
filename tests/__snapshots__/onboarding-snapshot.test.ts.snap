@@ -1,0 +1,370 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-go 1`] = `
+"# Onboarding tour: spine-go
+
+## TL;DR
+This repository is a app built primarily in go. The verified spine currently runs through \`main.go\`, \`config/config.go\`, \`routes/routes.go\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  main
+  config_config
+  routes_routes
+  service_service
+  store_store
+  main --> config_config
+  main --> routes_routes
+  routes_routes --> service_service
+  service_service --> store_store
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNptj7sKwzAMRX_FaE5-wEOnjp3atRCELSeG2C6K3FJC_r1x0gchXXTgSNyLRjDJEmhwfXqYDlnU6XyNSgX0sdCk6HzbrCiCUxYamhVFDMR3b6h5c1GSeBZlfrJUXR_2Yd_NLnUjlpN_PVu1nv26oYJAPHdY0CNIR6F8aslh7gWmCjBLujyjAS2cqYJ8syh09NgyBtAO-4GmFwKkaSM)
+
+Legend:
+- \`main\` = \`main.go\`
+- \`config_config\` = \`config/config.go\`
+- \`routes_routes\` = \`routes/routes.go\`
+- \`service_service\` = \`service/service.go\`
+- \`store_store\` = \`store/store.go\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+
+## Reading order
+- \`main.go\` - This is a detected entry point, so it shows how execution begins.
+- \`config/config.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`routes/routes.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`service/service.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`store/store.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`go.mod\` - Defines a key project contract or context file.
+
+## Entry points found
+- main.go - Conventional Go entry.
+
+## Subsystems
+- No subsystem clusters were strong enough to report yet.
+
+## Gotchas
+- Defaulted to app after manifest and file scan.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+- Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
+
+## Estimated read time
+40 minutes for the spine, 1.3 hours for fuller coverage.
+"
+`;
+
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-go-multi 1`] = `
+"# Onboarding tour: spine-go-multi
+
+## TL;DR
+This repository is a app built primarily in go. The verified spine currently runs through \`cmd/api/main.go\`, \`cmd/worker/main.go\`, \`internal/store/store.go\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  cmd_api_main
+  cmd_worker_main
+  internal_store_store
+  internal_jobs_jobs
+  internal_server_server
+  cmd_api_main --> internal_server_server
+  cmd_worker_main --> internal_jobs_jobs
+  internal_jobs_jobs --> internal_store_store
+  internal_server_server --> internal_store_store
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqFULsOwjAM_JXIc_sDGZgYmWBFqkzi0kAeyE2oUNV_p1BRkYqK5Syfzncn96CCJpBQ29CpBjmK3f7ohVBOV3gzlUPjP3sX-Eo8U8ZHYo-2amNgmjDjL-HUviFXE99Hl2kso0RZbv5Iv1rk6t9xM7uwXumcRa6eQAGOeKygQfYQG3KvH2qqMdkIQwGYYjg8vAIZOVEB6aYx0tbgmdGBrNG2NDwBdkaOIw)
+
+Legend:
+- \`cmd_api_main\` = \`cmd/api/main.go\`
+- \`cmd_worker_main\` = \`cmd/worker/main.go\`
+- \`internal_store_store\` = \`internal/store/store.go\`
+- \`internal_jobs_jobs\` = \`internal/jobs/jobs.go\`
+- \`internal_server_server\` = \`internal/server/server.go\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+
+## Reading order
+- \`cmd/api/main.go\` - This is a detected entry point, so it shows how execution begins.
+- \`cmd/worker/main.go\` - This is a detected entry point, so it shows how execution begins.
+- \`internal/store/store.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`internal/jobs/jobs.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`internal/server/server.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`go.mod\` - Defines a key project contract or context file.
+
+## Entry points found
+- cmd/api/main.go - Go cmd/*/main.go convention.
+- cmd/worker/main.go - Go cmd/*/main.go convention.
+
+## Subsystems
+- No subsystem clusters were strong enough to report yet.
+
+## Gotchas
+- Defaulted to app after manifest and file scan.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+- Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
+
+## Estimated read time
+40 minutes for the spine, 1.3 hours for fuller coverage.
+"
+`;
+
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-python 1`] = `
+"# Onboarding tour: spine-python
+
+## TL;DR
+This repository is a app built primarily in python. The verified spine currently runs through \`manage.py\`, \`app/main.py\`, \`app/config.py\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  manage
+  app_main
+  app_config
+  app_routes
+  app_services_user_service
+  app_main --> app_config
+  app_main --> app_routes
+  app_main --> app_services_user_service
+  app_routes --> app_services_user_service
+  manage --> app_main
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqFkLEKwzAMRH_FaE5-wEOnjp3atRCELSeG2A623BJC_r0JwaWG0m7vuNMJaQEVNIEEM4anGjCyuFzvXgiHHnvaCaepc2h9YRW8sX1RMWSmVFSi-LCKUpc3KuqzRLTt6UtLZdWVlfWz_5j7nz1Oe-f2BdCAo7iRBrkAD-T2n2gymEeGtQHMHG6zVyA5ZmogTxqZzhb7iA6kwTHR-gJCFHfV)
+
+Legend:
+- \`manage\` = \`manage.py\`
+- \`app_main\` = \`app/main.py\`
+- \`app_config\` = \`app/config.py\`
+- \`app_routes\` = \`app/routes.py\`
+- \`app_services_user_service\` = \`app/services/user_service.py\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+
+## Reading order
+- \`manage.py\` - This is a detected entry point, so it shows how execution begins.
+- \`app/main.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`app/config.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`app/routes.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`app/services/user_service.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`pyproject.toml\` - Defines a key project contract or context file.
+
+## Entry points found
+- manage.py - Conventional Python framework entry.
+
+## Subsystems
+### _ init  .py
+What it does: Files grouped around the __init__.py part of the codebase.
+Where it lives: \`app/**\`
+Entry point: \`app/__init__.py\`
+Skip unless: Skip unless your task touches the __init__.py area directly.
+
+## Gotchas
+- Defaulted to app after manifest and file scan.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+
+## Estimated read time
+40 minutes for the spine, 1.5 hours for fuller coverage.
+"
+`;
+
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-rust 1`] = `
+"# Onboarding tour: spine-rust
+
+## TL;DR
+This repository is a app built primarily in rust. The verified spine currently runs through \`src/lib.rs\`, \`src/config.rs\`, \`src/routes/mod.rs\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  src_lib
+  src_config
+  src_routes_mod
+  src_services_mod
+  src_services_user_service
+  src_lib --> src_config
+  src_lib --> src_routes_mod
+  src_lib --> src_services_mod
+  src_services_mod --> src_services_user_service
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNp9UMsKwjAQ_JWw5_YHcvDk0ZNehbImmzaQNLLZKFL679ZDIFD1No9lZtgFTLIEGlxITzMhizqdr7NSmc0Q_K1Ck2bnx8o4FaE8xGSrkokf3vzQyoYqa7JV3x--hLfOvqh1_5Zu2v6wXQIdROKI3oJeQCaKnz9YcliCwNoBFkmX12xACxfqoNwtCh09jowRtMOQaX0Dqa108g)
+
+Legend:
+- \`src_lib\` = \`src/lib.rs\`
+- \`src_config\` = \`src/config.rs\`
+- \`src_routes_mod\` = \`src/routes/mod.rs\`
+- \`src_services_mod\` = \`src/services/mod.rs\`
+- \`src_services_user_service\` = \`src/services/user_service.rs\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+
+## Reading order
+- \`src/lib.rs\` - This is a detected entry point, so it shows how execution begins.
+- \`src/config.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/routes/mod.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/services/mod.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/services/user_service.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`Cargo.toml\` - Defines a key project contract or context file.
+
+## Entry points found
+- src/lib.rs - Conventional Rust library entry.
+
+## Subsystems
+- No subsystem clusters were strong enough to report yet.
+
+## Gotchas
+- Defaulted to app after manifest and file scan.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+- Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
+
+## Estimated read time
+40 minutes for the spine, 1.3 hours for fuller coverage.
+"
+`;
+
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-ts 1`] = `
+"# Onboarding tour: spine-ts
+
+## TL;DR
+This repository is a cli built primarily in typescript. The verified spine currently runs through \`src/cli.ts\`, \`src/index.ts\`, \`src/services/user-service.ts\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  src_cli
+  src_index
+  src_services_user_service
+  src_core_router
+  src_handlers_user_handler
+  src_cli --> src_core_router
+  src_core_router --> src_handlers_user_handler
+  src_handlers_user_handler --> src_services_user_service
+  src_index --> src_services_user_service
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNp9UDkOwzAM-4qhOfmAh04dO7VrgUCwlcaAj0KWeyDI33sgDjK02UiK1DWCSZZAQ-_T3QzIog7Hc1Qqs-mMdxW6aOlRSSa-OUO5K29U2RJKTB2nIsRVGjBaTzz7Z7Yaotp29y-7khbbZr-fxSW6ufr3yG0rNBCIAzoLegQZKHyeZ6nH4gWmBrBIOj2jAS1cqIFytSi0d3hhDKB79JmmFy7qixA)
+
+Legend:
+- \`src_cli\` = \`src/cli.ts\`
+- \`src_index\` = \`src/index.ts\`
+- \`src_services_user_service\` = \`src/services/user-service.ts\`
+- \`src_core_router\` = \`src/core/router.ts\`
+- \`src_handlers_user_handler\` = \`src/handlers/user-handler.ts\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Treat the command surface as the product: startup, argument flow, and the first handoff into core logic explain most of the system.
+
+## Reading order
+- \`src/cli.ts\` - This is a detected entry point, so it shows how execution begins.
+- \`src/index.ts\` - This is a detected entry point, so it shows how execution begins.
+- \`src/services/user-service.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/core/router.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/handlers/user-handler.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`package.json\` - Defines a key project contract or context file.
+
+## Entry points found
+- src/cli.ts - Declared as package.json bin.
+- src/index.ts - Declared as package.json main.
+
+## Subsystems
+### Auth
+What it does: Authentication and authorization flow.
+Where it lives: \`src/auth/**\`
+Entry point: \`src/auth/session.ts\`
+Skip unless: Skip unless you are changing login, permissions, or identity handling.
+
+### Config
+What it does: Configuration loading, defaults, and environment handling.
+Where it lives: \`src/config/**\`
+Entry point: \`src/config/env.ts\`
+Skip unless: Skip unless configuration, flags, or env wiring matters to your task.
+
+### Docs
+What it does: Documentation and non-runtime reference material.
+Where it lives: \`docs/**\`
+Entry point: \`docs/usage.md\`
+Skip unless: Skip unless you are updating docs or looking for usage guidance.
+
+### Utils
+What it does: Shared helpers and low-level support functions.
+Where it lives: \`src/utils/**\`
+Entry point: \`src/utils/logger.ts\`
+Skip unless: Skip unless you need a reused helper or utility abstraction.
+
+## Gotchas
+- Detected CLI bin entry.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+
+## Estimated read time
+40 minutes for the spine, 2.3 hours for fuller coverage.
+"
+`;
+
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-ts-paths 1`] = `
+"# Onboarding tour: spine-ts-paths
+
+## TL;DR
+This repository is a library built primarily in typescript. The verified spine currently runs through \`src/index.ts\`, \`src/services/user-service.ts\`, \`src/utils/index.ts\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  src_index
+  src_services_user_service
+  src_utils_index
+  src_index --> src_services_user_service
+  src_index --> src_utils_index
+  src_services_user_service --> src_utils_index
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqFj7sKwzAMRX_FaE5-wEOnjp3atRCELTcGP4ottSkh_94HeAgYuulw77mgFUy2BBpcyE8zY2F1Ol-TUrWYySdLS4NK5eEN1Uk-V6MWCvtQ9_0fqHE8_Lf31c5W1-4JMECkEtFb0CvwTPH7myWHEhi2AVA4X17JgOYiNIDcLTIdPd4KRtAOQ6XtDbgxZh8)
+
+Legend:
+- \`src_index\` = \`src/index.ts\`
+- \`src_services_user_service\` = \`src/services/user-service.ts\`
+- \`src_utils_index\` = \`src/utils/index.ts\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
+
+## Reading order
+- \`src/index.ts\` - This is a detected entry point, so it shows how execution begins.
+- \`src/services/user-service.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/utils/index.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`package.json\` - Defines a key project contract or context file.
+- \`tsconfig.json\` - Defines a key project contract or context file.
+
+## Entry points found
+- src/index.ts - Declared as package.json main.
+
+## Subsystems
+- No subsystem clusters were strong enough to report yet.
+
+## Gotchas
+- Detected package exports or main entry.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+- Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
+
+## Estimated read time
+24 minutes for the spine, 1 hour for fuller coverage.
+"
+`;

@@ -1,11 +1,49 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { analyzeRepository } from "../src/core/analyze.js";
 import { extractVerifiedSpine } from "../src/core/spine.js";
 import { findEntryPoints } from "../src/core/entries.js";
+import type { VerifiedEdge } from "../src/types.js";
 
 const fixturesRoot = path.resolve(import.meta.dirname, "fixtures");
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function verifyEdgeBackedBySource(rootPath: string, edge: VerifiedEdge): Promise<boolean> {
+  const source = await readFile(path.join(rootPath, edge.from), "utf8");
+  const filename = path.posix.basename(edge.to);
+  const extension = path.posix.extname(edge.to);
+
+  if ([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"].includes(extension)) {
+    const baseName = filename.replace(/\.[^.]+$/, "");
+    const importable = baseName === "index" ? path.posix.basename(path.posix.dirname(edge.to)) : baseName;
+    return new RegExp(`["'][^"']*\\b${escapeRegex(importable)}\\b[^"']*["']`).test(source);
+  }
+
+  if (extension === ".py") {
+    const importable =
+      filename === "__init__.py" ? path.posix.basename(path.posix.dirname(edge.to)) : filename.replace(/\.py$/, "");
+    return new RegExp(`(?:from|import)\\s+[\\w\\.]*${escapeRegex(importable)}\\b`).test(source);
+  }
+
+  if (extension === ".rs") {
+    const modName =
+      filename === "mod.rs" ? path.posix.basename(path.posix.dirname(edge.to)) : filename.replace(/\.rs$/, "");
+    return new RegExp(`\\bmod\\s+${escapeRegex(modName)}\\s*;`).test(source);
+  }
+
+  if (extension === ".go") {
+    const directory = path.posix.dirname(edge.to);
+    const importableSegment = directory === "." ? filename.replace(/\.go$/, "") : path.posix.basename(directory);
+    return new RegExp(`["'][^"']*\\b${escapeRegex(importableSegment)}["']`).test(source);
+  }
+
+  return false;
+}
 
 describe("extractVerifiedSpine", () => {
   it("builds a verified import-only spine for a TypeScript repo", async () => {
@@ -142,5 +180,55 @@ describe("extractVerifiedSpine", () => {
       { from: "routes/routes.go", to: "service/service.go", kind: "import" },
       { from: "service/service.go", to: "store/store.go", kind: "import" }
     ]);
+  });
+
+  it("traces both binaries in a multi-binary Go module", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-go-multi");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(spine.supportedLanguages).toEqual(["go"]);
+    expect(spine.entrySeeds).toEqual(["cmd/api/main.go", "cmd/worker/main.go"]);
+    expect(spine.nodes).toEqual([
+      "cmd/api/main.go",
+      "cmd/worker/main.go",
+      "internal/store/store.go",
+      "internal/jobs/jobs.go",
+      "internal/server/server.go"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "cmd/api/main.go", to: "internal/server/server.go", kind: "import" },
+      { from: "cmd/worker/main.go", to: "internal/jobs/jobs.go", kind: "import" },
+      { from: "internal/jobs/jobs.go", to: "internal/store/store.go", kind: "import" },
+      { from: "internal/server/server.go", to: "internal/store/store.go", kind: "import" }
+    ]);
+  });
+
+  it("retains only edges that can be traced back to a real source-level import", async () => {
+    const fixtures = [
+      "spine-ts",
+      "spine-ts-paths",
+      "spine-python",
+      "spine-python-src",
+      "spine-rust",
+      "spine-go",
+      "spine-go-multi"
+    ];
+
+    for (const fixture of fixtures) {
+      const rootPath = path.join(fixturesRoot, fixture);
+      const entryPoints = await findEntryPoints(rootPath);
+      const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+      expect(spine.edges.length, `${fixture} should produce at least one verified edge`).toBeGreaterThan(0);
+
+      for (const edge of spine.edges) {
+        const verified = await verifyEdgeBackedBySource(rootPath, edge);
+        expect(
+          verified,
+          `${fixture}: ${edge.from} -> ${edge.to} should be backed by a real import statement`
+        ).toBe(true);
+      }
+    }
   });
 });

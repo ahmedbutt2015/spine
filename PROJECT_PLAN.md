@@ -132,6 +132,9 @@ $ claude /onboard
 - [x] Added heuristic subsystem clustering for non-spine files
 - [x] Added a verified-data-only synthesis prompt and executor path
 - [x] Verified the current scaffold with `npm run check`, `npm run test`, and `npm run onboard -- .`
+- [x] Added tsconfig path-alias resolution and a vendored-directory skip in the file walker
+- [x] Added an edge-verification test that re-checks every retained spine edge against source
+- [x] Added a multi-binary Go fixture and an `ONBOARDING.md` snapshot suite
 
 ### In progress conceptually
 
@@ -170,7 +173,7 @@ Checklist:
 
 Goal: compute the real backbone of the codebase without any LLM inference.
 
-Status: next up
+Status: complete
 
 Checklist:
 
@@ -183,14 +186,14 @@ Checklist:
 - [x] Select the first 5-7 TS/JS, Python, Rust, and Go spine nodes
 - [x] Build verified edges only between selected TS/JS, Python, Rust, and Go nodes
 - [x] Build verified edges only between selected Rust nodes
-- [ ] Drop unresolved or speculative edges
-- [ ] Add tests proving every retained edge exists in source
+- [x] Drop unresolved or speculative edges
+- [x] Add tests proving every retained edge exists in source
 
 ### Milestone 3: Diagram generation
 
 Goal: turn the verified spine into a valid, shareable architecture diagram.
 
-Status: in progress
+Status: complete
 
 Checklist:
 
@@ -206,7 +209,7 @@ Checklist:
 
 Goal: make the output feel genuinely useful for a developer opening a strange repo.
 
-Status: in progress
+Status: complete
 
 Checklist:
 
@@ -215,13 +218,13 @@ Checklist:
 - [x] Choose one file per subsystem as the read-first file
 - [x] Improve reading order beyond raw file existence
 - [x] Estimate read time based on output size and spine depth
-- [ ] Expand fixture repos to cover more codebase shapes
+- [x] Expand fixture repos to cover more codebase shapes
 
 ### Milestone 5: LLM-constrained synthesis
 
 Goal: let the LLM write clearly without letting it hallucinate architecture.
 
-Status: in progress
+Status: complete
 
 Checklist:
 
@@ -229,7 +232,7 @@ Checklist:
 - [x] Feed only verified structure plus small code excerpts
 - [x] Prevent the model from inventing edges
 - [x] Regenerate via deterministic fallback if synthesis output is invalid
-- [ ] Add snapshot tests for final `ONBOARDING.md`
+- [x] Add snapshot tests for final `ONBOARDING.md`
 
 ### Milestone 6: Launch readiness
 
@@ -248,21 +251,21 @@ Checklist:
 
 ## What should happen next
 
-The highest-value next step is output quality hardening.
+Milestones 1–5 are complete. The only remaining milestone is launch readiness (M6).
 
 Why:
 
-- The verified spine, diagram, subsystem pass, and constrained synthesis path are now present
-- The biggest remaining risk is output quality on larger real repos
-- Snapshot coverage and more benchmark fixtures will expose weak spots faster than adding new surface area
+- Verified spine, diagram, subsystem clustering, constrained synthesis, edge verification, and snapshot coverage are all in place
+- The biggest remaining risk is real-repo output quality at scale, not missing surface area
+- A second wave of tightening should be evidence-driven from benchmark runs, not speculative
 
 Recommended next implementation order:
 
-1. Add final `ONBOARDING.md` snapshot tests across fixture repos
-2. Expand benchmark coverage for bigger repos and edge cases
-3. Tighten subsystem heuristics where outputs are still noisy
-4. Improve read-time and reading-order quality
-5. Add launch polish once outputs are consistently strong
+1. Run the full benchmark catalog and capture diffs in subsystem labelling, reading order, and read-time
+2. Tighten subsystem heuristics from concrete failing cases, not from intuition
+3. Capture three high-quality real-repo diagrams for launch assets
+4. Rewrite README for launch with usage examples
+5. Decide whether to ship a built-in Anthropic synthesis client or stay command-injected
 
 ## Future ideas
 
@@ -322,10 +325,10 @@ Use this as the day-to-day implementation checklist.
 - [x] Go spine tracer implemented
 - [x] Rust spine tracer implemented
 - [x] Subsystem clustering implemented
-- [ ] Mermaid generator implemented
+- [x] Mermaid generator implemented
 - [x] Mermaid validator implemented
 - [x] `mermaid.live` encoder implemented
 - [x] Final markdown contract implemented
 - [x] Runtime prompt written
-- [ ] Snapshot suite expanded
+- [x] Snapshot suite expanded
 - [ ] Public launch polish completed
