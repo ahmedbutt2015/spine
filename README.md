@@ -17,8 +17,9 @@ The first implementation slice is in place:
 
 - Detect repo shape and dominant languages
 - Find likely entry points across TS/JS, Python, Go, and Rust
-- Generate a starter `ONBOARDING.md` with a deterministic reading order
-- Package the foundation for the future verified spine walk and Mermaid diagram
+- Extract a verified spine across TS/JS, Python, Go, and Rust
+- Generate a validated Mermaid diagram plus `mermaid.live` link
+- Write `ONBOARDING.md` with a deterministic reading order and architecture map
 
 ## Development
 

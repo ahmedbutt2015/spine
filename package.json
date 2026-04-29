@@ -33,10 +33,12 @@
   "license": "MIT",
   "dependencies": {
     "@mermaid-js/parser": "^0.6.3",
+    "mermaid": "^11.14.0",
     "pako": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/pako": "^2.0.4",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

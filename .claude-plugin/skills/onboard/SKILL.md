@@ -5,8 +5,9 @@ Use this skill from a repository root to generate an onboarding tour for an unfa
 ## Current workflow
 
 1. Run the deterministic scanner to detect repo shape and entry points.
-2. Write `ONBOARDING.md` into the target repo root.
-3. Use the output as the substrate for the upcoming verified spine walk and Mermaid diagram pass.
+2. Extract a verified spine from supported local language relationships.
+3. Generate and validate a Mermaid diagram from the verified spine.
+4. Write `ONBOARDING.md` into the target repo root.
 
 ## Local command
 
@@ -23,7 +24,7 @@ npm run onboard -- .
 
 ## Next implementation targets
 
-1. Shallow import and call walk from each entry point
-2. Verified edge retention between the top 5-7 spine files
-3. Mermaid validation plus `mermaid.live` URL generation
-4. LLM synthesis over verified structure only
+1. Subsystem clustering
+2. Better reading-order heuristics
+3. LLM synthesis over verified structure only
+4. Snapshot coverage across more real repos

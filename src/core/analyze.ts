@@ -2,6 +2,7 @@ import path from "node:path";
 
 import type { AnalysisResult } from "../types.js";
 import { detectProject } from "./detect.js";
+import { generateArchitectureDiagram } from "./diagram.js";
 import { findEntryPoints } from "./entries.js";
 import { pathExists } from "./repository.js";
 import { extractVerifiedSpine } from "./spine.js";
@@ -40,6 +41,7 @@ export async function analyzeRepository(rootPath: string): Promise<AnalysisResul
   const detection = await detectProject(rootPath);
   const entryPoints = await findEntryPoints(rootPath, detection);
   const spine = await extractVerifiedSpine(rootPath, entryPoints);
+  const diagram = await generateArchitectureDiagram(spine);
   const suggestedReadingOrder = await collectReadingOrder(
     rootPath,
     entryPoints.map((entryPoint) => entryPoint.path),
@@ -50,6 +52,7 @@ export async function analyzeRepository(rootPath: string): Promise<AnalysisResul
     detection,
     entryPoints,
     spine,
+    diagram,
     suggestedReadingOrder
   };
 }

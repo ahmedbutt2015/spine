@@ -128,6 +128,7 @@ $ claude /onboard
 - [x] Added coverage for Python `src/` layout imports discovered during benchmark testing
 - [x] Added first-pass Rust verified module tracing
 - [x] Added first-pass Go verified import tracing from local module imports
+- [x] Added validated Mermaid diagram generation and `mermaid.live` links
 - [x] Verified the current scaffold with `npm run check`, `npm run test`, and `npm run onboard -- .`
 
 ### In progress conceptually
@@ -141,9 +142,9 @@ $ claude /onboard
 - [x] Spine tracing from Go entry points
 - [x] Verified edge extraction for Go
 - [ ] Subsystem clustering
-- [ ] Final markdown contract
-- [ ] Mermaid parse validation
-- [ ] `mermaid.live` URL generation
+- [x] Final markdown contract for architecture map section
+- [x] Mermaid parse validation
+- [x] `mermaid.live` URL generation
 - [ ] LLM synthesis constrained by verified data only
 
 ## Milestones
@@ -187,17 +188,17 @@ Checklist:
 
 Goal: turn the verified spine into a valid, shareable architecture diagram.
 
-Status: not started
+Status: in progress
 
 Checklist:
 
-- [ ] Generate Mermaid from verified spine
-- [ ] Enforce 5-7 node limit
-- [ ] Validate with `@mermaid-js/parser`
-- [ ] Retry generation once if invalid
-- [ ] Omit diagram on repeated failure
-- [ ] Encode `mermaid.live` URL with `pako`
-- [ ] Add round-trip tests for the generated link
+- [x] Generate Mermaid from verified spine
+- [x] Enforce 5-7 node limit
+- [x] Validate with an equivalent Mermaid parser in Node
+- [x] Retry generation once if invalid
+- [x] Omit diagram on repeated failure
+- [x] Encode `mermaid.live` URL with `pako`
+- [x] Add round-trip tests for the generated link
 
 ### Milestone 4: Subsystem and reading-tour quality
 
@@ -297,8 +298,8 @@ Use this as the day-to-day implementation checklist.
 - [x] Rust spine tracer implemented
 - [ ] Subsystem clustering implemented
 - [ ] Mermaid generator implemented
-- [ ] Mermaid validator implemented
-- [ ] `mermaid.live` encoder implemented
+- [x] Mermaid validator implemented
+- [x] `mermaid.live` encoder implemented
 - [ ] Final markdown contract implemented
 - [ ] Runtime prompt written
 - [ ] Snapshot suite expanded

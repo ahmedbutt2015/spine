@@ -51,9 +51,21 @@ export interface SpineAnalysis {
   omittedEntryPoints: string[];
 }
 
+export interface DiagramNodeRef {
+  id: string;
+  path: string;
+}
+
+export interface ArchitectureDiagram {
+  code: string;
+  mermaidLiveUrl: string;
+  nodes: DiagramNodeRef[];
+}
+
 export interface AnalysisResult {
   detection: ProjectDetection;
   entryPoints: EntryPoint[];
   spine: SpineAnalysis;
+  diagram: ArchitectureDiagram | null;
   suggestedReadingOrder: string[];
 }
