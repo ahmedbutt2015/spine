@@ -67,7 +67,22 @@ function pickSignatures(source: string, maxItems = 5): string[] {
   return signatures;
 }
 
-async function loadContextFiles(rootPath: string, analysis: AnalysisResult): Promise<SynthesisPayload> {
+interface SynthesisContext {
+  payload: SynthesisPayload;
+  spineLineCount: number;
+}
+
+function countNonBlankLines(source: string): number {
+  let count = 0;
+  for (const line of source.split(/\r?\n/)) {
+    if (line.trim().length > 0) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+async function loadSynthesisContext(rootPath: string, analysis: AnalysisResult): Promise<SynthesisContext> {
   const readme = await readTextIfExists(path.join(rootPath, "README.md"));
   const keyConfigCandidates = [
     "package.json",
@@ -90,6 +105,7 @@ async function loadContextFiles(rootPath: string, analysis: AnalysisResult): Pro
   }
 
   const spineSignatures = [];
+  let spineLineCount = 0;
   for (const filePath of analysis.spine.nodes) {
     const absolutePath = path.join(rootPath, filePath);
     if (!(await pathExists(absolutePath))) {
@@ -97,6 +113,7 @@ async function loadContextFiles(rootPath: string, analysis: AnalysisResult): Pro
     }
 
     const source = await readFile(absolutePath, "utf8");
+    spineLineCount += countNonBlankLines(source);
     spineSignatures.push({
       path: filePath,
       signatures: pickSignatures(source)
@@ -104,14 +121,17 @@ async function loadContextFiles(rootPath: string, analysis: AnalysisResult): Pro
   }
 
   return {
-    detection: analysis.detection,
-    entryPoints: analysis.entryPoints,
-    spine: analysis.spine,
-    diagram: analysis.diagram,
-    subsystems: analysis.subsystems,
-    readme: readme ? readme.slice(0, 3000) : null,
-    keyConfigs,
-    spineSignatures
+    payload: {
+      detection: analysis.detection,
+      entryPoints: analysis.entryPoints,
+      spine: analysis.spine,
+      diagram: analysis.diagram,
+      subsystems: analysis.subsystems,
+      readme: readme ? readme.slice(0, 3000) : null,
+      keyConfigs,
+      spineSignatures
+    },
+    spineLineCount
   };
 }
 
@@ -185,11 +205,17 @@ function buildDeterministicSubsystems(analysis: AnalysisResult): SubsystemSummar
   }));
 }
 
-function estimateReadTime(analysis: AnalysisResult): TourSynthesis["estimatedReadTime"] {
-  const spineMinutes = Math.max(20, analysis.spine.nodes.length * 8);
-  const fullCoverageHours = Number(
-    Math.max(1, Math.min(6, (analysis.spine.nodes.length + analysis.subsystems.length) / 4)).toFixed(1)
+function estimateReadTime(
+  analysis: AnalysisResult,
+  spineLineCount: number
+): TourSynthesis["estimatedReadTime"] {
+  const subsystemFileCount = analysis.subsystems.reduce(
+    (sum, cluster) => sum + cluster.files.length,
+    0
   );
+  const spineMinutes = Math.max(10, Math.ceil(spineLineCount / 80));
+  const fullCoverageMinutes = spineMinutes + Math.round(subsystemFileCount * 0.2);
+  const fullCoverageHours = Math.max(1, Number((fullCoverageMinutes / 60).toFixed(1)));
 
   return {
     spineMinutes,
@@ -209,7 +235,11 @@ function buildDeterministicGotchas(analysis: AnalysisResult): string[] {
   return [...new Set(gotchas)].slice(0, 8);
 }
 
-function buildDeterministicSynthesis(prompt: string, analysis: AnalysisResult): TourSynthesis {
+function buildDeterministicSynthesis(
+  prompt: string,
+  analysis: AnalysisResult,
+  spineLineCount: number
+): TourSynthesis {
   return {
     source: "deterministic",
     prompt,
@@ -218,7 +248,7 @@ function buildDeterministicSynthesis(prompt: string, analysis: AnalysisResult): 
     readingOrder: buildDeterministicReadingOrder(analysis),
     subsystems: buildDeterministicSubsystems(analysis),
     gotchas: buildDeterministicGotchas(analysis),
-    estimatedReadTime: estimateReadTime(analysis)
+    estimatedReadTime: estimateReadTime(analysis, spineLineCount)
   };
 }
 
@@ -331,7 +361,7 @@ export async function synthesizeTour(
   options: SynthesisOptions = {},
   executor?: SynthesisExecutor
 ): Promise<TourSynthesis> {
-  const payload = await loadContextFiles(rootPath, analysis);
+  const { payload, spineLineCount } = await loadSynthesisContext(rootPath, analysis);
   const prompt = buildSynthesisPrompt(payload);
 
   if (options.promptOutPath) {
@@ -341,7 +371,7 @@ export async function synthesizeTour(
 
   const effectiveExecutor = executor ?? (options.synthesisCommand ? createCommandExecutor(options.synthesisCommand) : null);
   if (!effectiveExecutor) {
-    return buildDeterministicSynthesis(prompt, analysis);
+    return buildDeterministicSynthesis(prompt, analysis, spineLineCount);
   }
 
   try {
@@ -355,6 +385,6 @@ export async function synthesizeTour(
     // Fall back to deterministic synthesis below.
   }
 
-  return buildDeterministicSynthesis(prompt, analysis);
+  return buildDeterministicSynthesis(prompt, analysis, spineLineCount);
 }
 

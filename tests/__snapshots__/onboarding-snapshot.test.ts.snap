@@ -54,7 +54,7 @@ Follow the first verified handoff from the entry point into the main runtime pat
 - Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
 
 ## Estimated read time
-40 minutes for the spine, 1.3 hours for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
 
@@ -104,7 +104,7 @@ Start from the exported surface and work inward; the stable public entry points 
 - Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
 
 ## Estimated read time
-24 minutes for the spine, 1 hour for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
 
@@ -163,7 +163,7 @@ Follow the first verified handoff from the entry point into the main runtime pat
 - Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
 
 ## Estimated read time
-40 minutes for the spine, 1.3 hours for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
 
@@ -225,7 +225,7 @@ Skip unless: Skip unless your task touches the __init__.py area directly.
 - The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
 
 ## Estimated read time
-40 minutes for the spine, 1.5 hours for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
 
@@ -283,7 +283,7 @@ Start from the exported surface and work inward; the stable public entry points 
 - Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
 
 ## Estimated read time
-40 minutes for the spine, 1.3 hours for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
 
@@ -350,7 +350,7 @@ Skip unless: Skip unless you need the central control flow or shared abstraction
 - The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
 
 ## Estimated read time
-40 minutes for the spine, 1.8 hours for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
 
@@ -430,7 +430,7 @@ Skip unless: Skip unless you need a reused helper or utility abstraction.
 - The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
 
 ## Estimated read time
-40 minutes for the spine, 2.3 hours for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
 
@@ -482,6 +482,6 @@ Start from the exported surface and work inward; the stable public entry points 
 - Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
 
 ## Estimated read time
-24 minutes for the spine, 1 hour for fuller coverage.
+10 minutes for the spine, 1 hour for fuller coverage.
 "
 `;
