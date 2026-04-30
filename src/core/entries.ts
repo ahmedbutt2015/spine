@@ -41,6 +41,35 @@ async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string):
   return null;
 }
 
+function parseCargoWorkspaceMembers(cargoToml: string): string[] {
+  const sectionPattern = /^\[[\w.-]+\]/gm;
+  const matches = [...cargoToml.matchAll(sectionPattern)];
+
+  let workspaceBody = "";
+  for (let index = 0; index < matches.length; index += 1) {
+    if (matches[index][0] !== "[workspace]") {
+      continue;
+    }
+    const start = matches[index].index! + matches[index][0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index! : cargoToml.length;
+    workspaceBody = cargoToml.slice(start, end);
+    break;
+  }
+
+  if (!workspaceBody) {
+    return [];
+  }
+
+  const membersMatch = workspaceBody.match(/\bmembers\s*=\s*\[([\s\S]*?)\]/);
+  if (!membersMatch) {
+    return [];
+  }
+
+  return [...membersMatch[1].matchAll(/"([^"]+)"/g)]
+    .map((match) => match[1])
+    .filter((member) => !member.includes("*"));
+}
+
 function dedupeEntryPoints(entryPoints: EntryPoint[]): EntryPoint[] {
   const seen = new Set<string>();
 
@@ -188,6 +217,28 @@ export async function findEntryPoints(
   if (resolvedDetection?.shape === "framework") {
     await addIfExists(rootPath, entryPoints, "src/pages/index.tsx", "typescript", "Framework convention: pages entry.");
     await addIfExists(rootPath, entryPoints, "app/page.tsx", "typescript", "Framework convention: app router entry.");
+  }
+
+  const cargoToml = await readTextIfExists(path.join(rootPath, "Cargo.toml"));
+  if (cargoToml) {
+    for (const member of parseCargoWorkspaceMembers(cargoToml)) {
+      const candidates: Array<{ path: string; kind: EntryPoint["kind"] }> = [
+        { path: `${member}/src/lib.rs`, kind: "library" },
+        { path: `${member}/src/main.rs`, kind: "main" },
+        { path: `${member}/lib.rs`, kind: "library" },
+        { path: `${member}/main.rs`, kind: "main" }
+      ];
+      for (const candidate of candidates) {
+        if (await pathExists(path.join(rootPath, candidate.path))) {
+          entryPoints.push({
+            path: candidate.path,
+            language: "rust",
+            kind: candidate.kind,
+            reason: `Rust workspace member: ${member}.`
+          });
+        }
+      }
+    }
   }
 
   const hasGoEntry = entryPoints.some((entryPoint) => entryPoint.language === "go");

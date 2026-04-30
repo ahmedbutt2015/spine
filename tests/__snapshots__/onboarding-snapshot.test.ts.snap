@@ -287,6 +287,73 @@ Start from the exported surface and work inward; the stable public entry points 
 "
 `;
 
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-rust-workspace 1`] = `
+"# Onboarding tour: spine-rust-workspace
+
+## TL;DR
+This repository is a monorepo built primarily in rust. The verified spine currently runs through \`cli/src/main.rs\`, \`core/src/lib.rs\`, \`cli/src/commands.rs\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  cli_src_main
+  core_src_lib
+  cli_src_commands
+  core_src_parser
+  core_src_types
+  cli_src_main --> cli_src_commands
+  core_src_lib --> core_src_parser
+  core_src_lib --> core_src_types
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNp9j7sKwzAMRX_FaE5-wEOnjp3atRBUW2kMfgRZpoSQf0_qLk0LGXXv4R40g0mWQEPv08sMyKIu13tUynjXZTZdQBfrnZhq4N3juzcpBIw275gRORPvIplGyr_Dqm1Px0ub7QMdTP8x1QUNBOLNYkHPIAOF95uWeixeYGkAi6TbFA1o4UINlNGi0NnhkzGA7tFnWlY1Bmh2)
+
+Legend:
+- \`cli_src_main\` = \`cli/src/main.rs\`
+- \`core_src_lib\` = \`core/src/lib.rs\`
+- \`cli_src_commands\` = \`cli/src/commands.rs\`
+- \`core_src_parser\` = \`core/src/parser.rs\`
+- \`core_src_types\` = \`core/src/types.rs\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Work package-first, not file-first: find the owning workspace, then follow the verified spine inside that slice.
+
+## Reading order
+- \`cli/src/main.rs\` - This is a detected entry point, so it shows how execution begins.
+- \`core/src/lib.rs\` - This is a detected entry point, so it shows how execution begins.
+- \`cli/src/commands.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`core/src/parser.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`core/src/types.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`Cargo.toml\` - Defines a key project contract or context file.
+
+## Entry points found
+- cli/src/main.rs - Rust workspace member: cli.
+- core/src/lib.rs - Rust workspace member: core.
+
+## Subsystems
+### CLI
+What it does: Command wiring and runtime entry behavior.
+Where it lives: \`cli/**\`
+Entry point: \`cli/Cargo.toml\`
+Skip unless: Skip unless you are changing command UX or startup flow.
+
+### Core
+What it does: Core orchestration and shared runtime behavior.
+Where it lives: \`core/**\`
+Entry point: \`core/Cargo.toml\`
+Skip unless: Skip unless you need the central control flow or shared abstractions.
+
+## Gotchas
+- Detected workspaces or multiple package roots.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+
+## Estimated read time
+40 minutes for the spine, 1.8 hours for fuller coverage.
+"
+`;
+
 exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-ts 1`] = `
 "# Onboarding tour: spine-ts
 

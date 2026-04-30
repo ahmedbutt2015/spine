@@ -204,6 +204,36 @@ describe("extractVerifiedSpine", () => {
     ]);
   });
 
+  it("seeds spine from each Rust workspace member's lib.rs or main.rs", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-rust-workspace");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(entryPoints.map((entryPoint) => entryPoint.path)).toEqual([
+      "cli/src/main.rs",
+      "core/src/lib.rs"
+    ]);
+    expect(entryPoints.map((entryPoint) => entryPoint.reason)).toEqual([
+      "Rust workspace member: cli.",
+      "Rust workspace member: core."
+    ]);
+
+    expect(spine.supportedLanguages).toEqual(["rust"]);
+    expect(spine.entrySeeds).toEqual(["cli/src/main.rs", "core/src/lib.rs"]);
+    expect(spine.nodes).toEqual([
+      "cli/src/main.rs",
+      "core/src/lib.rs",
+      "cli/src/commands.rs",
+      "core/src/parser.rs",
+      "core/src/types.rs"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "cli/src/main.rs", to: "cli/src/commands.rs", kind: "import" },
+      { from: "core/src/lib.rs", to: "core/src/parser.rs", kind: "import" },
+      { from: "core/src/lib.rs", to: "core/src/types.rs", kind: "import" }
+    ]);
+  });
+
   it("traces both binaries in a multi-binary Go module", async () => {
     const rootPath = path.join(fixturesRoot, "spine-go-multi");
     const entryPoints = await findEntryPoints(rootPath);
@@ -233,6 +263,7 @@ describe("extractVerifiedSpine", () => {
       "spine-python",
       "spine-python-src",
       "spine-rust",
+      "spine-rust-workspace",
       "spine-go",
       "spine-go-multi",
       "spine-go-library"

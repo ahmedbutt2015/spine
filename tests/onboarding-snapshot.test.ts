@@ -12,6 +12,7 @@ const snapshotFixtures = [
   "spine-ts-paths",
   "spine-python",
   "spine-rust",
+  "spine-rust-workspace",
   "spine-go",
   "spine-go-multi",
   "spine-go-library"
