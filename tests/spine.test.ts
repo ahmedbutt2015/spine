@@ -182,6 +182,28 @@ describe("extractVerifiedSpine", () => {
     ]);
   });
 
+  it("seeds a Go library spine from the canonical root file when no main.go exists", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-go-library");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(entryPoints.map((entryPoint) => entryPoint.path)).toEqual(["lib.go"]);
+    expect(entryPoints[0].kind).toBe("library");
+    expect(entryPoints[0].reason).toBe("Go package root (no main.go).");
+
+    expect(spine.supportedLanguages).toEqual(["go"]);
+    expect(spine.entrySeeds).toEqual(["lib.go"]);
+    expect(spine.nodes).toEqual([
+      "lib.go",
+      "internal/parser/parser.go",
+      "internal/transport/transport.go"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "lib.go", to: "internal/parser/parser.go", kind: "import" },
+      { from: "lib.go", to: "internal/transport/transport.go", kind: "import" }
+    ]);
+  });
+
   it("traces both binaries in a multi-binary Go module", async () => {
     const rootPath = path.join(fixturesRoot, "spine-go-multi");
     const entryPoints = await findEntryPoints(rootPath);
@@ -212,7 +234,8 @@ describe("extractVerifiedSpine", () => {
       "spine-python-src",
       "spine-rust",
       "spine-go",
-      "spine-go-multi"
+      "spine-go-multi",
+      "spine-go-library"
     ];
 
     for (const fixture of fixtures) {

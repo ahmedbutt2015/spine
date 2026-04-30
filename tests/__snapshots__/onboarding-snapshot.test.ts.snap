@@ -58,6 +58,56 @@ Follow the first verified handoff from the entry point into the main runtime pat
 "
 `;
 
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-go-library 1`] = `
+"# Onboarding tour: spine-go-library
+
+## TL;DR
+This repository is a library built primarily in go. The verified spine currently runs through \`lib.go\`, \`internal/parser/parser.go\`, \`internal/transport/transport.go\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  lib
+  internal_parser_parser
+  internal_transport_transport
+  lib --> internal_parser_parser
+  lib --> internal_transport_transport
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNp9jr0KwkAQhF_lmDp5gSusLK20FWTN7ZmD-2Ozh4SQd5dAQESx-gZm-JgFQ3EMCx_LcxhJ1JzO12xMDPcNIStLpnirJBPLjo9GhfJUi-g77QLT94c_hq_FDxM6JJZEwcEu0JHTdtaxpxYVawdqWi5zHmBVGndo1ZHyMdBDKMF6ihOvL0DlVKE)
+
+Legend:
+- \`lib\` = \`lib.go\`
+- \`internal_parser_parser\` = \`internal/parser/parser.go\`
+- \`internal_transport_transport\` = \`internal/transport/transport.go\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
+
+## Reading order
+- \`lib.go\` - This is a detected entry point, so it shows how execution begins.
+- \`internal/parser/parser.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`internal/transport/transport.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`go.mod\` - Defines a key project contract or context file.
+
+## Entry points found
+- lib.go - Go package root (no main.go).
+
+## Subsystems
+- No subsystem clusters were strong enough to report yet.
+
+## Gotchas
+- Detected package exports or main entry.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+- Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
+
+## Estimated read time
+24 minutes for the spine, 1 hour for fuller coverage.
+"
+`;
+
 exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-go-multi 1`] = `
 "# Onboarding tour: spine-go-multi
 

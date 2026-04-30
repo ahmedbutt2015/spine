@@ -13,7 +13,8 @@ const snapshotFixtures = [
   "spine-python",
   "spine-rust",
   "spine-go",
-  "spine-go-multi"
+  "spine-go-multi",
+  "spine-go-library"
 ];
 
 describe("ONBOARDING.md snapshot", () => {

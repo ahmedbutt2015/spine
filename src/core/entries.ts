@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { DetectedLanguage, EntryPoint, ProjectDetection } from "../types.js";
-import { pathExists, readJsonIfExists, walkRepositoryFiles } from "./repository.js";
+import { pathExists, readJsonIfExists, readTextIfExists, walkRepositoryFiles } from "./repository.js";
 
 interface PackageJsonShape {
   bin?: string | Record<string, string>;
@@ -188,6 +188,33 @@ export async function findEntryPoints(
   if (resolvedDetection?.shape === "framework") {
     await addIfExists(rootPath, entryPoints, "src/pages/index.tsx", "typescript", "Framework convention: pages entry.");
     await addIfExists(rootPath, entryPoints, "app/page.tsx", "typescript", "Framework convention: app router entry.");
+  }
+
+  const hasGoEntry = entryPoints.some((entryPoint) => entryPoint.language === "go");
+  if (!hasGoEntry) {
+    const goMod = await readTextIfExists(path.join(rootPath, "go.mod"));
+    if (goMod) {
+      const rootGoFiles = files
+        .map((file) => file.path)
+        .filter((filePath) => /^[^/]+\.go$/.test(filePath) && !filePath.endsWith("_test.go"))
+        .sort();
+
+      if (rootGoFiles.length > 0) {
+        const moduleMatch = goMod.match(/^module\s+(\S+)/m);
+        const moduleBasename = moduleMatch ? path.posix.basename(moduleMatch[1]) : null;
+        const canonical =
+          (moduleBasename && rootGoFiles.find((filePath) => filePath === `${moduleBasename}.go`)) ||
+          rootGoFiles.find((filePath) => filePath === "doc.go") ||
+          rootGoFiles[0];
+
+        entryPoints.push({
+          path: canonical,
+          language: "go",
+          kind: "library",
+          reason: "Go package root (no main.go)."
+        });
+      }
+    }
   }
 
   return dedupeEntryPoints(entryPoints).sort((left, right) => left.path.localeCompare(right.path));

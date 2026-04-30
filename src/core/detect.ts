@@ -116,6 +116,10 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
   const rustMainFile = await pathExists(path.join(rootPath, "src/main.rs"));
   const cargoDeclaresLib = Boolean(cargoToml?.match(/^\s*\[lib\]/m));
   const cargoDeclaresWorkspace = Boolean(cargoToml?.match(/^\s*\[workspace\]/m));
+  const hasGoMain = files.some(
+    (file) => file.path === "main.go" || /^cmd\/[^/]+\/main\.go$/.test(file.path)
+  );
+  const goLibrary = goMod && !hasGoMain;
 
   const workspaceArray = Array.isArray(packageJson?.workspaces)
     ? packageJson.workspaces
@@ -125,7 +129,8 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
   const hasLibraryExports =
     Boolean(packageJson?.exports || packageJson?.main) ||
     (rustLibFile && !rustMainFile) ||
-    cargoDeclaresLib;
+    cargoDeclaresLib ||
+    goLibrary;
   const { shape, reasons } = pickShape({
     hasWorkspaces,
     hasFrameworkConfig: nextConfig,
