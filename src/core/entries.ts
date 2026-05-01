@@ -257,25 +257,52 @@ export async function findEntryPoints(
           directory.replace(/\/+$/, "").replace(/^\.\//, "")
         );
         const lastNamespaceSegment = prefix.replace(/\\+$/, "").split("\\").pop() ?? "";
+        const conventionalNames = [
+          lastNamespaceSegment ? `${lastNamespaceSegment}.php` : "",
+          "App.php",
+          "Application.php",
+          "Kernel.php"
+        ].filter((name): name is string => Boolean(name));
 
         for (const baseDirectory of baseDirectories) {
-          const candidates = [
-            lastNamespaceSegment ? `${baseDirectory}/${lastNamespaceSegment}.php` : null,
-            `${baseDirectory}/App.php`,
-            `${baseDirectory}/Application.php`,
-            `${baseDirectory}/Kernel.php`
-          ].filter((candidate): candidate is string => Boolean(candidate));
+          const baseSlash = baseDirectory ? `${baseDirectory}/` : "";
+          const candidatesUnderBase = files
+            .map((file) => file.path)
+            .filter((filePath) => baseSlash === "" || filePath.startsWith(baseSlash))
+            .map((filePath) => ({
+              path: filePath,
+              basename: path.posix.basename(filePath),
+              depth: filePath.split("/").length
+            }))
+            .filter((candidate) => conventionalNames.includes(candidate.basename))
+            .sort((left, right) => {
+              if (left.depth !== right.depth) {
+                return left.depth - right.depth;
+              }
+              const leftRank = conventionalNames.indexOf(left.basename);
+              const rightRank = conventionalNames.indexOf(right.basename);
+              if (leftRank !== rightRank) {
+                return leftRank - rightRank;
+              }
+              return left.path.localeCompare(right.path);
+            });
 
-          for (const candidate of candidates) {
-            if (await pathExists(path.join(rootPath, candidate))) {
-              entryPoints.push({
-                path: candidate,
-                language: "php",
-                kind: "library",
-                reason: `PHP package root for namespace ${prefix.replace(/\\\\/g, "\\")}.`
-              });
-              break;
-            }
+          if (candidatesUnderBase.length === 0) {
+            continue;
+          }
+
+          const minDepth = candidatesUnderBase[0].depth;
+          const shallowestPicks = candidatesUnderBase
+            .filter((candidate) => candidate.depth === minDepth)
+            .slice(0, 3);
+
+          for (const picked of shallowestPicks) {
+            entryPoints.push({
+              path: picked.path,
+              language: "php",
+              kind: "library",
+              reason: `PHP package root for namespace ${prefix.replace(/\\\\/g, "\\")}.`
+            });
           }
         }
       }
