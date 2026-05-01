@@ -135,6 +135,12 @@ $ claude /onboard
 - [x] Added tsconfig path-alias resolution and a vendored-directory skip in the file walker
 - [x] Added an edge-verification test that re-checks every retained spine edge against source
 - [x] Added a multi-binary Go fixture and an `ONBOARDING.md` snapshot suite
+- [x] Reordered shape detection so library beats CLI; extended PHP library
+      detection to include composer + psr-4 + no app-level entries
+- [x] Filtered noise languages below 5 files / 5% of source from the
+      `detection.languages` list
+- [x] Fixed `inferClusterKey` returning a filename when a top-level file lives
+      directly under `src/`/`app/`/`lib/`
 
 ### In progress conceptually
 
@@ -251,42 +257,107 @@ Checklist:
 
 ## What should happen next
 
-Milestones 1–5 are complete. The only remaining milestone is launch readiness (M6).
-
-Why:
-
-- Verified spine, diagram, subsystem clustering, constrained synthesis, edge verification, and snapshot coverage are all in place
-- The biggest remaining risk is real-repo output quality at scale, not missing surface area
-- A second wave of tightening should be evidence-driven from benchmark runs, not speculative
+Milestones 1–5 are complete and PHP support has shipped. The Backlog section
+below tracks the next wave of work in execution order.
 
 Recommended next implementation order:
 
-1. Run the full benchmark catalog and capture diffs in subsystem labelling, reading order, and read-time
-2. Tighten subsystem heuristics from concrete failing cases, not from intuition
-3. Capture three high-quality real-repo diagrams for launch assets
-4. Rewrite README for launch with usage examples
-5. Decide whether to ship a built-in Anthropic synthesis client or stay command-injected
+1. Pre-existing polish surfaced by benchmarks
+2. Per-repo persistent knowledge file (`.claude/REPO_CONTEXT.md`)
+3. Built-in Anthropic SDK synthesis client
+4. `/map` command (diagram-only mode)
+5. Token cost transparency
+6. Per-run efficiency / value statement
+7. High-ROI v2 ideas (diff mode, per-subsystem diagrams, GitHub Action, test coverage overlay)
+8. M6 launch readiness (README, usage examples, before/after doc, three real-repo diagrams, launch assets)
+
+## Backlog
+
+Ordered by execution priority. Top items are scheduled work; bottom items are
+ideas to evaluate after the current wave lands.
+
+### Pre-existing polish surfaced by benchmarks
+
+- [x] `bin/` directory at repo root should not flip shape to `cli` for libraries
+      and frameworks (Laravel hits this with `bin/release.sh` etc.)
+- [x] Mixed-language reporting drops noise languages (Laravel reports
+      `php, javascript` because of a few Vite configs)
+- [x] `inferClusterKey` returns `"main.ts"` when a top-level file lives directly
+      under `src/`; should fall back to `core` when the second segment is a file
+
+### Per-repo persistent knowledge file
+
+- [ ] On first run, write a slim `.claude/REPO_CONTEXT.md` derived from the
+      verified analysis (spine, subsystems, entry points, mental model) so
+      future Claude conversations in the repo start with the model loaded
+- [ ] On later runs, detect the existing file and refresh it instead of
+      regenerating from scratch
+- [ ] Include a content hash and last-scanned commit so staleness is visible
+- [ ] Default: gitignored; opt-in to commit via flag
+
+### Built-in Anthropic SDK synthesis client
+
+- [ ] Add an Anthropic SDK-backed synthesis executor as an alternative to
+      `--synthesis-command`
+- [ ] Read `ANTHROPIC_API_KEY` from env, allow `--model` flag (default to the
+      latest Sonnet)
+- [ ] Enable prompt caching on the structured-context block so re-runs in the
+      same repo are near-free
+- [ ] Read `response.usage` and surface real input/output/cache token counts
+
+### `/map` command — diagram-only mode
+
+- [ ] CLI flag `--map-only` that skips synthesis and prints just the validated
+      Mermaid code plus the `mermaid.live` URL
+- [ ] Optional `--out path.mmd` to write the Mermaid source to a file
+- [ ] Companion Claude Code skill at `.claude-plugin/skills/map/`
+
+### Token cost transparency
+
+- [ ] Pre-flight estimate: count prompt characters, convert to tokens at
+      `ceil(chars / 3.5)`, print estimated input cost at the chosen model's
+      published price
+- [ ] Configurable model via `--cost-model` flag (default Sonnet)
+- [ ] Actual usage: when running through the built-in SDK, surface real token
+      counts and cost from `response.usage`
+
+### Per-run efficiency / value statement
+
+- [ ] After writing `ONBOARDING.md`, print a one-line value summary like
+      `Estimated savings: ~3 hours of manual exploration for ~$0.05`
+- [ ] Derived from spine line count, subsystem file count, and the cost
+      estimate from the previous item
+- [ ] `docs/before-after.md` showing two real repos side-by-side, with and
+      without `/onboard`, as a launch asset
+
+### High-ROI v2 ideas
+
+- [ ] Diff mode: re-run analysis and report only what changed in the spine
+      vs. the saved `ONBOARDING.md`
+- [ ] Per-subsystem mini-diagrams in addition to the main spine diagram
+- [ ] GitHub Action that re-runs `/onboard` on PRs touching spine files and
+      posts the diff as a bot comment
+- [ ] Test coverage overlay: mark spine nodes that have a sibling test file
+
+### Lower priority — evaluate later
+
+- VSCode / JetBrains extension wrapping the CLI
+- Interactive terminal navigation of the spine
+- Symbol-level (function/class) dependency tracking across all six languages
+- More languages: Java, Ruby, C#, Kotlin, Swift, C/C++
 
 ## Future ideas
 
-### Per-repo knowledge file for Claude
+### Per-repo knowledge file for Claude (now scheduled — see Backlog above)
 
-Idea: have `/onboard` (or a companion command) drop a persistent knowledge file at the repo root — for example `.claude/REPO_CONTEXT.md` or reuse the generated `ONBOARDING.md` — so any subsequent Claude task in that repository starts with a verified mental model already loaded.
-
-Behavior:
+Original notes that promoted the idea into the backlog:
 
 - On first run in a repo, generate and save the file if not present
 - On later runs, detect the existing file and refresh it instead of regenerating from scratch
 - File should be lightweight enough to fit in Claude's auto-loaded context (e.g. CLAUDE.md-compatible)
 - Optional: include a content hash or last-scanned commit so Claude can tell when the snapshot is stale
 
-Why it matters:
-
-- Removes the cold-start cost on every new conversation in the same repo
-- Gives Claude verified spine/edges/subsystems instead of letting it re-derive (and possibly hallucinate) them each time
-- Turns `/onboard` from a one-shot report into ongoing repo memory
-
-Open questions:
+Open questions still to resolve while implementing:
 
 - Where to save (repo root vs. `.claude/` vs. user-level memory)
 - Whether to commit the file or gitignore it by default

@@ -139,7 +139,8 @@ function inferClusterKey(filePath: string): string {
   if (segments.some((segment) => ["core", "internal"].includes(segment))) return "core";
 
   if (segments.length > 1 && ["src", "app", "lib"].includes(segments[0])) {
-    return segments[1] ?? "core";
+    const candidate = segments[1] ?? "core";
+    return candidate.includes(".") ? "core" : candidate;
   }
 
   if (segments[0] && !segments[0].includes(".")) {

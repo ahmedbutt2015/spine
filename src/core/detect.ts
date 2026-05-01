@@ -45,11 +45,16 @@ function detectLanguages(files: RepoFile[]): DetectedLanguage[] {
     counts.set(language, (counts.get(language) ?? 0) + 1);
   }
 
-  const languages = [...counts.entries()]
-    .sort((left, right) => right[1] - left[1])
-    .map(([language]) => language);
+  const ranked = [...counts.entries()].sort((left, right) => right[1] - left[1]);
+  if (ranked.length === 0) {
+    return ["unknown"];
+  }
 
-  return languages.length > 0 ? languages : ["unknown"];
+  const totalSourceFiles = ranked.reduce((sum, [, count]) => sum + count, 0);
+  const minimumCount = Math.max(5, Math.ceil(totalSourceFiles * 0.05));
+
+  const filtered = ranked.filter(([, count], index) => index === 0 || count >= minimumCount);
+  return filtered.map(([language]) => language);
 }
 
 function pickShape(options: {
@@ -72,14 +77,14 @@ function pickShape(options: {
     return { shape: "framework", reasons };
   }
 
-  if (options.hasCliBin) {
-    reasons.push("Detected CLI bin entry.");
-    return { shape: "cli", reasons };
-  }
-
   if (options.hasLibraryExports) {
     reasons.push("Detected package exports or main entry.");
     return { shape: "library", reasons };
+  }
+
+  if (options.hasCliBin) {
+    reasons.push("Detected CLI bin entry.");
+    return { shape: "cli", reasons };
   }
 
   if (options.topLevelDirectories.includes("infra") || options.topLevelDirectories.includes("terraform")) {
@@ -124,7 +129,15 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     (file) => file.path === "main.go" || /^cmd\/[^/]+\/main\.go$/.test(file.path)
   );
   const goLibrary = goMod && !hasGoMain;
-  const phpLibrary = composerJson?.type === "library";
+  const composerHasPsr4 = Boolean(
+    composerJson?.autoload && (composerJson.autoload as { "psr-4"?: unknown })["psr-4"]
+  );
+  const hasPhpAppEntry =
+    (await pathExists(path.join(rootPath, "public/index.php"))) ||
+    (await pathExists(path.join(rootPath, "index.php"))) ||
+    (await pathExists(path.join(rootPath, "artisan"))) ||
+    (await pathExists(path.join(rootPath, "bin/console")));
+  const phpLibrary = composerJson?.type === "library" || (composerHasPsr4 && !hasPhpAppEntry);
 
   const workspaceArray = Array.isArray(packageJson?.workspaces)
     ? packageJson.workspaces

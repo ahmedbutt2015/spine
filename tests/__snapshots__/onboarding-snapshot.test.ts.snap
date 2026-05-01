@@ -270,11 +270,11 @@ Follow the first verified handoff from the entry point into the main runtime pat
 - manage.py - Conventional Python framework entry.
 
 ## Subsystems
-### _ init  .py
-What it does: Files grouped around the __init__.py part of the codebase.
+### Core
+What it does: Core orchestration and shared runtime behavior.
 Where it lives: \`app/**\`
 Entry point: \`app/__init__.py\`
-Skip unless: Skip unless your task touches the __init__.py area directly.
+Skip unless: Skip unless you need the central control flow or shared abstractions.
 
 ## Gotchas
 - Defaulted to app after manifest and file scan.
@@ -414,7 +414,7 @@ exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-
 "# Onboarding tour: spine-ts
 
 ## TL;DR
-This repository is a cli built primarily in typescript. The verified spine currently runs through \`src/cli.ts\`, \`src/index.ts\`, \`src/services/user-service.ts\`. The architecture diagram is derived from verified static-analysis edges only.
+This repository is a library built primarily in typescript. The verified spine currently runs through \`src/cli.ts\`, \`src/index.ts\`, \`src/services/user-service.ts\`. The architecture diagram is derived from verified static-analysis edges only.
 
 ## Architecture map
 \`\`\`mermaid
@@ -442,7 +442,7 @@ Legend:
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Treat the command surface as the product: startup, argument flow, and the first handoff into core logic explain most of the system.
+Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
 
 ## Reading order
 - \`src/cli.ts\` - This is a detected entry point, so it shows how execution begins.
@@ -482,7 +482,7 @@ Entry point: \`src/utils/logger.ts\`
 Skip unless: Skip unless you need a reused helper or utility abstraction.
 
 ## Gotchas
-- Detected CLI bin entry.
+- Detected package exports or main entry.
 - The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
 
 ## Estimated read time
