@@ -173,6 +173,10 @@ export async function findEntryPoints(
   await addIfExists(rootPath, entryPoints, "src/main.rs", "rust", "Conventional Rust binary entry.");
   await addIfExists(rootPath, entryPoints, "src/lib.rs", "rust", "Conventional Rust library entry.");
   await addIfExists(rootPath, entryPoints, "main.go", "go", "Conventional Go entry.");
+  await addIfExists(rootPath, entryPoints, "public/index.php", "php", "PHP front controller.");
+  await addIfExists(rootPath, entryPoints, "index.php", "php", "Conventional PHP web entry.");
+  await addIfExists(rootPath, entryPoints, "artisan", "php", "Laravel CLI entry.");
+  await addIfExists(rootPath, entryPoints, "bin/console", "php", "Symfony CLI entry.");
 
   const files = await walkRepositoryFiles(rootPath);
 
@@ -236,6 +240,43 @@ export async function findEntryPoints(
             kind: candidate.kind,
             reason: `Rust workspace member: ${member}.`
           });
+        }
+      }
+    }
+  }
+
+  const hasPhpEntry = entryPoints.some((entryPoint) => entryPoint.language === "php");
+  if (!hasPhpEntry) {
+    const composer = await readJsonIfExists<{
+      autoload?: { "psr-4"?: Record<string, string | string[]> };
+    }>(path.join(rootPath, "composer.json"));
+    const psrBlock = composer?.autoload?.["psr-4"];
+    if (psrBlock) {
+      for (const [prefix, value] of Object.entries(psrBlock)) {
+        const baseDirectories = (Array.isArray(value) ? value : [value]).map((directory) =>
+          directory.replace(/\/+$/, "").replace(/^\.\//, "")
+        );
+        const lastNamespaceSegment = prefix.replace(/\\+$/, "").split("\\").pop() ?? "";
+
+        for (const baseDirectory of baseDirectories) {
+          const candidates = [
+            lastNamespaceSegment ? `${baseDirectory}/${lastNamespaceSegment}.php` : null,
+            `${baseDirectory}/App.php`,
+            `${baseDirectory}/Application.php`,
+            `${baseDirectory}/Kernel.php`
+          ].filter((candidate): candidate is string => Boolean(candidate));
+
+          for (const candidate of candidates) {
+            if (await pathExists(path.join(rootPath, candidate))) {
+              entryPoints.push({
+                path: candidate,
+                language: "php",
+                kind: "library",
+                reason: `PHP package root for namespace ${prefix.replace(/\\\\/g, "\\")}.`
+              });
+              break;
+            }
+          }
         }
       }
     }

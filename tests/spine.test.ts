@@ -42,6 +42,15 @@ async function verifyEdgeBackedBySource(rootPath: string, edge: VerifiedEdge): P
     return new RegExp(`["'][^"']*\\b${escapeRegex(importableSegment)}["']`).test(source);
   }
 
+  if (extension === ".php") {
+    const className = filename.replace(/\.php$/, "");
+    const useMatch = new RegExp(`\\buse\\s+[\\\\\\w]*\\\\?${escapeRegex(className)}\\b`).test(source);
+    const requireMatch = new RegExp(`(?:require|include)(?:_once)?\\s*\\(?\\s*['"][^'"]*${escapeRegex(filename)}['"]`).test(
+      source
+    );
+    return useMatch || requireMatch;
+  }
+
   return false;
 }
 
@@ -204,6 +213,30 @@ describe("extractVerifiedSpine", () => {
     ]);
   });
 
+  it("resolves PHP imports through composer.json PSR-4 autoloading", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-php");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(entryPoints.map((entryPoint) => entryPoint.path)).toEqual(["public/index.php"]);
+    expect(entryPoints[0].language).toBe("php");
+    expect(entryPoints[0].reason).toBe("PHP front controller.");
+
+    expect(spine.supportedLanguages).toEqual(["php"]);
+    expect(spine.entrySeeds).toEqual(["public/index.php"]);
+    expect(spine.nodes).toEqual([
+      "public/index.php",
+      "src/Http/Router.php",
+      "src/Controllers/HomeController.php",
+      "src/Services/UserService.php"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "public/index.php", to: "src/Http/Router.php", kind: "import" },
+      { from: "src/Controllers/HomeController.php", to: "src/Services/UserService.php", kind: "import" },
+      { from: "src/Http/Router.php", to: "src/Controllers/HomeController.php", kind: "import" }
+    ]);
+  });
+
   it("seeds spine from each Rust workspace member's lib.rs or main.rs", async () => {
     const rootPath = path.join(fixturesRoot, "spine-rust-workspace");
     const entryPoints = await findEntryPoints(rootPath);
@@ -266,7 +299,8 @@ describe("extractVerifiedSpine", () => {
       "spine-rust-workspace",
       "spine-go",
       "spine-go-multi",
-      "spine-go-library"
+      "spine-go-library",
+      "spine-php"
     ];
 
     for (const fixture of fixtures) {

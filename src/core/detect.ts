@@ -29,7 +29,8 @@ const LANGUAGE_EXTENSIONS: Record<string, DetectedLanguage> = {
   ".cjs": "javascript",
   ".py": "python",
   ".go": "go",
-  ".rs": "rust"
+  ".rs": "rust",
+  ".php": "php"
 };
 
 function detectLanguages(files: RepoFile[]): DetectedLanguage[] {
@@ -111,6 +112,9 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     (await pathExists(path.join(rootPath, "next.config.mjs"))) ||
     (await pathExists(path.join(rootPath, "next.config.ts")));
   const requirements = await pathExists(path.join(rootPath, "requirements.txt"));
+  const composerJson = await readJsonIfExists<{ type?: string; autoload?: Record<string, unknown> }>(
+    path.join(rootPath, "composer.json")
+  );
   const pnpmWorkspace = await readTextIfExists(path.join(rootPath, "pnpm-workspace.yaml"));
   const rustLibFile = await pathExists(path.join(rootPath, "src/lib.rs"));
   const rustMainFile = await pathExists(path.join(rootPath, "src/main.rs"));
@@ -120,6 +124,7 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     (file) => file.path === "main.go" || /^cmd\/[^/]+\/main\.go$/.test(file.path)
   );
   const goLibrary = goMod && !hasGoMain;
+  const phpLibrary = composerJson?.type === "library";
 
   const workspaceArray = Array.isArray(packageJson?.workspaces)
     ? packageJson.workspaces
@@ -130,7 +135,8 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     Boolean(packageJson?.exports || packageJson?.main) ||
     (rustLibFile && !rustMainFile) ||
     cargoDeclaresLib ||
-    goLibrary;
+    goLibrary ||
+    phpLibrary;
   const { shape, reasons } = pickShape({
     hasWorkspaces,
     hasFrameworkConfig: nextConfig,
@@ -146,6 +152,7 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     requirements ? "requirements.txt" : null,
     cargoToml !== null ? "Cargo.toml" : null,
     goMod ? "go.mod" : null,
+    composerJson ? "composer.json" : null,
     pnpmWorkspace ? "pnpm-workspace.yaml" : null
   ].filter((value): value is string => Boolean(value));
 

@@ -14,6 +14,7 @@ const SOURCE_EXTENSION_SET = new Set(SUPPORTED_SOURCE_EXTENSIONS);
 const PYTHON_EXTENSION = ".py";
 const RUST_EXTENSION = ".rs";
 const GO_EXTENSION = ".go";
+const PHP_EXTENSION = ".php";
 
 const IMPORT_PATTERNS = [
   /import\s+(?:type\s+)?[^"'`]*?from\s*["']([^"'`]+)["']/g,
@@ -43,6 +44,10 @@ function isGoLanguage(language: DetectedLanguage): boolean {
   return language === "go";
 }
 
+function isPhpLanguage(language: DetectedLanguage): boolean {
+  return language === "php";
+}
+
 function isSourceFile(filePath: string): boolean {
   return SOURCE_EXTENSION_SET.has(path.extname(filePath).toLowerCase());
 }
@@ -57,6 +62,10 @@ function isRustFile(filePath: string): boolean {
 
 function isGoFile(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === GO_EXTENSION && !filePath.endsWith("_test.go");
+}
+
+function isPhpFile(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === PHP_EXTENSION;
 }
 
 function getPythonModuleParts(filePath: string): string[] {
@@ -544,6 +553,119 @@ async function buildGoImportGraph(
   return graph;
 }
 
+interface PsrMapping {
+  prefix: string;
+  baseDirectories: string[];
+}
+
+async function loadPsrMappings(rootPath: string): Promise<PsrMapping[]> {
+  const composer = await readJsonIfExists<{
+    autoload?: { "psr-4"?: Record<string, string | string[]> };
+    "autoload-dev"?: { "psr-4"?: Record<string, string | string[]> };
+  }>(path.join(rootPath, "composer.json"));
+
+  if (!composer) {
+    return [];
+  }
+
+  const mappings: PsrMapping[] = [];
+  const blocks = [composer.autoload?.["psr-4"], composer["autoload-dev"]?.["psr-4"]];
+  for (const block of blocks) {
+    if (!block) {
+      continue;
+    }
+    for (const [prefix, value] of Object.entries(block)) {
+      const directories = (Array.isArray(value) ? value : [value])
+        .map((directory) => directory.replace(/\/+$/, "").replace(/^\.\//, ""));
+      mappings.push({ prefix, baseDirectories: directories });
+    }
+  }
+
+  return mappings;
+}
+
+function collectPhpUseSpecifiers(source: string): string[] {
+  const matches: string[] = [];
+  for (const useMatch of source.matchAll(/^\s*use\s+([^;]+);/gm)) {
+    for (const part of useMatch[1].split(",")) {
+      const className = part.trim().replace(/^(?:function|const)\s+/i, "").split(/\s+as\s+/i)[0]?.trim();
+      if (className) {
+        matches.push(className);
+      }
+    }
+  }
+  return matches;
+}
+
+function collectPhpRequireSpecifiers(source: string): string[] {
+  const matches: string[] = [];
+  for (const requireMatch of source.matchAll(
+    /(?:require|require_once|include|include_once)\s*\(?\s*['"]([^'"]+)['"]/g
+  )) {
+    matches.push(requireMatch[1]);
+  }
+  return matches;
+}
+
+function resolvePsrClassToCandidates(className: string, mappings: PsrMapping[]): string[] {
+  const normalized = className.replace(/^\\+/, "");
+  const candidates: string[] = [];
+
+  for (const mapping of mappings) {
+    if (!normalized.startsWith(mapping.prefix)) {
+      continue;
+    }
+
+    const relative = normalized.slice(mapping.prefix.length);
+    const fileSubpath = `${relative.split("\\").join("/")}.php`;
+    for (const baseDirectory of mapping.baseDirectories) {
+      const joined = baseDirectory ? `${baseDirectory}/${fileSubpath}` : fileSubpath;
+      candidates.push(joined);
+    }
+  }
+
+  return candidates;
+}
+
+async function buildPhpImportGraph(
+  rootPath: string,
+  candidateFiles: Set<string>
+): Promise<Map<string, Set<string>>> {
+  const graph = new Map<string, Set<string>>();
+  const psrMappings = await loadPsrMappings(rootPath);
+
+  for (const filePath of candidateFiles) {
+    const absolutePath = path.join(rootPath, filePath);
+    const source = await readFile(absolutePath, "utf8");
+    const useSpecifiers = collectPhpUseSpecifiers(source);
+    const requireSpecifiers = collectPhpRequireSpecifiers(source);
+    const resolvedImports = new Set<string>();
+
+    for (const className of useSpecifiers) {
+      for (const candidate of resolvePsrClassToCandidates(className, psrMappings)) {
+        if (candidateFiles.has(candidate) && candidate !== filePath) {
+          resolvedImports.add(candidate);
+        }
+      }
+    }
+
+    const fromDirectory = path.posix.dirname(filePath);
+    for (const specifier of requireSpecifiers) {
+      if (specifier.startsWith("/") || /^https?:\/\//.test(specifier)) {
+        continue;
+      }
+      const candidate = path.posix.normalize(path.posix.join(fromDirectory, specifier));
+      if (candidateFiles.has(candidate) && candidate !== filePath) {
+        resolvedImports.add(candidate);
+      }
+    }
+
+    graph.set(filePath, resolvedImports);
+  }
+
+  return graph;
+}
+
 function chooseSpineNodes(scores: Map<string, number>, entrySeeds: string[]): string[] {
   const ranked = [...scores.entries()].sort((left, right) => {
     if (right[1] !== left[1]) {
@@ -619,6 +741,9 @@ export async function extractVerifiedSpine(
   const goFiles = new Set(
     repositoryFiles.map((file) => file.path).filter((filePath) => isGoFile(filePath))
   );
+  const phpFiles = new Set(
+    repositoryFiles.map((file) => file.path).filter((filePath) => isPhpFile(filePath))
+  );
 
   const tsJsEntries = entryPoints
     .filter((entryPoint) => isTsOrJsLanguage(entryPoint.language))
@@ -636,8 +761,18 @@ export async function extractVerifiedSpine(
     .filter((entryPoint) => isGoLanguage(entryPoint.language))
     .map((entryPoint) => entryPoint.path)
     .filter((filePath) => goFiles.has(filePath));
+  const phpEntries = entryPoints
+    .filter((entryPoint) => isPhpLanguage(entryPoint.language))
+    .map((entryPoint) => entryPoint.path)
+    .filter((filePath) => phpFiles.has(filePath));
 
-  if (tsJsEntries.length === 0 && pythonEntries.length === 0 && rustEntries.length === 0 && goEntries.length === 0) {
+  if (
+    tsJsEntries.length === 0 &&
+    pythonEntries.length === 0 &&
+    rustEntries.length === 0 &&
+    goEntries.length === 0 &&
+    phpEntries.length === 0
+  ) {
     return {
       supportedLanguages: [],
       nodes: [],
@@ -683,7 +818,15 @@ export async function extractVerifiedSpine(
     }
   }
 
-  const entrySeeds = [...tsJsEntries, ...pythonEntries, ...rustEntries, ...goEntries].sort();
+  if (phpEntries.length > 0) {
+    graphs.set("php", await buildPhpImportGraph(rootPath, phpFiles));
+    supportedLanguages.push("php");
+    for (const [filePath, score] of scoreGraphFromSeeds(graphs.get("php")!, phpEntries, maxDepth)) {
+      scores.set(filePath, (scores.get(filePath) ?? 0) + score);
+    }
+  }
+
+  const entrySeeds = [...tsJsEntries, ...pythonEntries, ...rustEntries, ...goEntries, ...phpEntries].sort();
   const nodes = chooseSpineNodes(scores, entrySeeds);
   const nodeSet = new Set(nodes);
   const edges: VerifiedEdge[] = [];

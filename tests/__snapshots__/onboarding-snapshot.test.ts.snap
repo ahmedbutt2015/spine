@@ -167,6 +167,62 @@ Follow the first verified handoff from the entry point into the main runtime pat
 "
 `;
 
+exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-php 1`] = `
+"# Onboarding tour: spine-php
+
+## TL;DR
+This repository is a app built primarily in php. The verified spine currently runs through \`public/index.php\`, \`src/Http/Router.php\`, \`src/Controllers/HomeController.php\`. The architecture diagram is derived from verified static-analysis edges only.
+
+## Architecture map
+\`\`\`mermaid
+flowchart LR
+  public_index
+  src_Http_Router
+  src_Controllers_HomeController
+  src_Services_UserService
+  public_index --> src_Http_Router
+  src_Controllers_HomeController --> src_Services_UserService
+  src_Http_Router --> src_Controllers_HomeController
+\`\`\`
+
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqVkLsKg0AQRX9FptYf2CJNUlikUtIFls3uGBf2IbOzeSD-exCiAcEi5RnuvQdmBB0NgoDOxafuFXFxbq6hKIZ8c1ZLGwy-Zk6kZc08yCZmRlpOxxiYonNISdbR44-XRIv0sBqTvCSkL2wFRVUd_jesrT3FZnHN709CCR7JK2tAjMA9-vk3BjuVHcNUgsoc23fQIJgylpAHoxhPVt1JeRCdcgmnD7iufkc)
+
+Legend:
+- \`public_index\` = \`public/index.php\`
+- \`src_Http_Router\` = \`src/Http/Router.php\`
+- \`src_Controllers_HomeController\` = \`src/Controllers/HomeController.php\`
+- \`src_Services_UserService\` = \`src/Services/UserService.php\`
+
+Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
+
+## Mental model
+Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+
+## Reading order
+- \`public/index.php\` - This is a detected entry point, so it shows how execution begins.
+- \`src/Http/Router.php\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/Controllers/HomeController.php\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`src/Services/UserService.php\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+
+## Entry points found
+- public/index.php - PHP front controller.
+
+## Subsystems
+### Data
+What it does: Data access, persistence, and state interaction.
+Where it lives: \`src/Models/**\`
+Entry point: \`src/Models/User.php\`
+Skip unless: Skip unless your task touches storage, models, or persistence.
+
+## Gotchas
+- Defaulted to app after manifest and file scan.
+- The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+
+## Estimated read time
+10 minutes for the spine, 1 hour for fuller coverage.
+"
+`;
+
 exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-python 1`] = `
 "# Onboarding tour: spine-python
 

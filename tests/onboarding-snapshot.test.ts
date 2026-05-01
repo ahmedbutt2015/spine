@@ -15,7 +15,8 @@ const snapshotFixtures = [
   "spine-rust-workspace",
   "spine-go",
   "spine-go-multi",
-  "spine-go-library"
+  "spine-go-library",
+  "spine-php"
 ];
 
 describe("ONBOARDING.md snapshot", () => {

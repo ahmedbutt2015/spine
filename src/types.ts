@@ -4,6 +4,7 @@ export type DetectedLanguage =
   | "python"
   | "go"
   | "rust"
+  | "php"
   | "unknown";
 
 export type ProjectShape =
