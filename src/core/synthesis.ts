@@ -13,6 +13,7 @@ import { pathExists, readTextIfExists } from "./repository.js";
 export interface SynthesisOptions {
   promptOutPath?: string;
   synthesisCommand?: string;
+  anthropicModel?: string;
 }
 
 export interface SynthesisExecutor {
@@ -321,6 +322,23 @@ function validateLlmResponse(parsed: unknown, analysis: AnalysisResult, prompt: 
   };
 }
 
+async function maybeCreateAnthropicExecutor(model: string | undefined): Promise<SynthesisExecutor | null> {
+  if (!model) {
+    return null;
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    process.stderr.write(
+      "ANTHROPIC_API_KEY not set; falling back to deterministic synthesis.\n"
+    );
+    return null;
+  }
+
+  const { createAnthropicExecutor } = await import("./anthropic.js");
+  return createAnthropicExecutor({ model, apiKey });
+}
+
 function createCommandExecutor(command: string): SynthesisExecutor {
   return {
     async execute(prompt: string): Promise<string> {
@@ -369,7 +387,11 @@ export async function synthesizeTour(
     await writeFile(options.promptOutPath, prompt, "utf8");
   }
 
-  const effectiveExecutor = executor ?? (options.synthesisCommand ? createCommandExecutor(options.synthesisCommand) : null);
+  const effectiveExecutor =
+    executor ??
+    (await maybeCreateAnthropicExecutor(options.anthropicModel)) ??
+    (options.synthesisCommand ? createCommandExecutor(options.synthesisCommand) : null);
+
   if (!effectiveExecutor) {
     return buildDeterministicSynthesis(prompt, analysis, spineLineCount);
   }

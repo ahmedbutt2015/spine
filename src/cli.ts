@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { analyzeRepository } from "./core/analyze.js";
+import { writeRepoContextFile } from "./core/repoContext.js";
 import { synthesizeTour } from "./core/synthesis.js";
 import { renderOnboardingMarkdown } from "./formatters/onboarding.js";
 
@@ -12,12 +13,16 @@ interface CliOptions {
   outPath?: string;
   promptOutPath?: string;
   synthesisCommand?: string;
+  anthropicModel?: string;
+  noContextFile: boolean;
+  contextFilePath?: string;
 }
 
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     targetPath: ".",
-    json: false
+    json: false,
+    noContextFile: false
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -46,6 +51,23 @@ function parseArgs(argv: string[]): CliOptions {
       continue;
     }
 
+    if (token === "--anthropic-model") {
+      options.anthropicModel = argv[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (token === "--no-context-file") {
+      options.noContextFile = true;
+      continue;
+    }
+
+    if (token === "--context-file") {
+      options.contextFilePath = argv[index + 1];
+      index += 1;
+      continue;
+    }
+
     if (!token.startsWith("-")) {
       options.targetPath = token;
     }
@@ -60,7 +82,8 @@ async function main(): Promise<void> {
   const result = await analyzeRepository(rootPath);
   const synthesis = await synthesizeTour(rootPath, result, {
     promptOutPath: options.promptOutPath,
-    synthesisCommand: options.synthesisCommand ?? process.env.SPINE_SYNTHESIS_COMMAND
+    synthesisCommand: options.synthesisCommand ?? process.env.SPINE_SYNTHESIS_COMMAND,
+    anthropicModel: options.anthropicModel ?? process.env.SPINE_ANTHROPIC_MODEL
   });
 
   if (options.json) {
@@ -79,6 +102,15 @@ async function main(): Promise<void> {
   process.stdout.write(`Found ${result.entryPoints.length} entry point(s).\n`);
   process.stdout.write(`Synthesis source: ${synthesis.source}.\n`);
   process.stdout.write(`Wrote ${outPath}\n`);
+
+  if (!options.noContextFile) {
+    const contextWrite = await writeRepoContextFile(rootPath, result, synthesis, {
+      outPath: options.contextFilePath
+        ? path.resolve(process.cwd(), options.contextFilePath)
+        : undefined
+    });
+    process.stdout.write(`Wrote ${contextWrite.path} (hash ${contextWrite.contentHash})\n`);
+  }
 }
 
 main().catch((error: unknown) => {

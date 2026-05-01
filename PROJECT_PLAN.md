@@ -141,6 +141,10 @@ $ claude /onboard
       `detection.languages` list
 - [x] Fixed `inferClusterKey` returning a filename when a top-level file lives
       directly under `src/`/`app/`/`lib/`
+- [x] Added `.claude/REPO_CONTEXT.md` writer with content hash and git commit
+      tracking; flagged with `--no-context-file` and `--context-file`
+- [x] Added Anthropic SDK synthesis executor with prompt caching on the
+      structured-context block, real usage logging, and cost computation
 
 ### In progress conceptually
 
@@ -287,23 +291,27 @@ ideas to evaluate after the current wave lands.
 
 ### Per-repo persistent knowledge file
 
-- [ ] On first run, write a slim `.claude/REPO_CONTEXT.md` derived from the
+- [x] On first run, write a slim `.claude/REPO_CONTEXT.md` derived from the
       verified analysis (spine, subsystems, entry points, mental model) so
       future Claude conversations in the repo start with the model loaded
-- [ ] On later runs, detect the existing file and refresh it instead of
-      regenerating from scratch
-- [ ] Include a content hash and last-scanned commit so staleness is visible
-- [ ] Default: gitignored; opt-in to commit via flag
+- [x] On later runs, detect the existing file and refresh it instead of
+      regenerating from scratch (overwrites in place)
+- [x] Include a content hash and last-scanned commit so staleness is visible
+- [x] CLI flag `--no-context-file` to disable; `--context-file <path>` to
+      override location. Recommend gitignoring `.claude/REPO_CONTEXT.md`
+      in the README rather than auto-managing `.gitignore`
 
 ### Built-in Anthropic SDK synthesis client
 
-- [ ] Add an Anthropic SDK-backed synthesis executor as an alternative to
+- [x] Add an Anthropic SDK-backed synthesis executor as an alternative to
       `--synthesis-command`
-- [ ] Read `ANTHROPIC_API_KEY` from env, allow `--model` flag (default to the
-      latest Sonnet)
-- [ ] Enable prompt caching on the structured-context block so re-runs in the
-      same repo are near-free
-- [ ] Read `response.usage` and surface real input/output/cache token counts
+- [x] Read `ANTHROPIC_API_KEY` from env, allow `--anthropic-model` flag
+      (also reads `SPINE_ANTHROPIC_MODEL` env)
+- [x] Enable prompt caching on the structured-context block so re-runs in the
+      same repo are near-free (split prompt at `Structured context:` marker;
+      caches the JSON payload with `cache_control: { type: "ephemeral" }`)
+- [x] Read `response.usage` and surface real input/output/cache token counts
+      with cost in USD using a per-model pricing table
 
 ### `/map` command — diagram-only mode
 
