@@ -4,7 +4,7 @@
   "description": "Generate a verified onboarding guide and architecture map for any codebase.",
   "type": "module",
   "bin": {
-    "onboard": "./dist/cli.js"
+    "onboard": "dist/cli.js"
   },
   "files": [
     "dist",
