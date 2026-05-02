@@ -45,7 +45,7 @@ If someone asks what `spine` is for, the shortest useful answer is:
 ## How to try it
 
 ```bash
-npm install -g spine
+npm install -g @spine-io/onboard
 onboard . --map-only
 onboard .
 ```

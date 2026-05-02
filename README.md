@@ -2,6 +2,8 @@
 
 `spine` turns an unfamiliar repository into a verified onboarding guide.
 
+![spine hero](assets/spine-hero.png)
+
 In one run it gives you:
 
 - a small architecture diagram built from verified static-analysis edges only
@@ -49,7 +51,7 @@ Use `/onboard` when you want the full guide.
 ### Install from npm
 
 ```bash
-npm install -g spine
+npm install -g @spine-io/onboard
 ```
 
 Then run:
@@ -185,10 +187,10 @@ Current verified spine coverage includes:
 
 ## Benchmarks and launch assets
 
-- benchmark catalog: [src/benchmarks/catalog.ts](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/src/benchmarks/catalog.ts)
-- before/after examples: [docs/before-after.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/docs/before-after.md)
-- launch blog draft: [docs/blog-v1.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/docs/blog-v1.md)
-- media prompts: [docs/media-prompts.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/docs/media-prompts.md)
+- benchmark catalog: [src/benchmarks/catalog.ts](src/benchmarks/catalog.ts)
+- before/after examples: [docs/before-after.md](docs/before-after.md)
+- launch blog draft: [docs/blog-v1.md](docs/blog-v1.md)
+- media prompts: [docs/media-prompts.md](docs/media-prompts.md)
 
 ## Development
 
