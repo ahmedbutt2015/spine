@@ -13,5 +13,5 @@
 The skill maps directly to the local CLI via:
 
 ```bash
-npm run onboard -- . --map-only
+npm run map -- .
 ```

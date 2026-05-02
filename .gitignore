@@ -3,4 +3,8 @@ dist
 .DS_Store
 coverage
 *.log
+.spine-cost.log
+.onboard-response.json
 .onboard-*.txt
+.claude/REPO_CONTEXT.md
+benchmarks/repos

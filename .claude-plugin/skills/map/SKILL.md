@@ -12,7 +12,7 @@ Use this skill from a repository root to generate the verified architecture map 
 ## Local command
 
 ```bash
-npm run onboard -- . --map-only
+npm run map -- .
 ```
 
 ## Product contract

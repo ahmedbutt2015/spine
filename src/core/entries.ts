@@ -10,10 +10,6 @@ interface PackageJsonShape {
 }
 
 async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string): Promise<string | null> {
-  if (await pathExists(path.join(rootPath, declaredPath))) {
-    return declaredPath;
-  }
-
   const sourceRoots = ["src/", "lib/"];
   const extensionSwaps: Array<[RegExp, string]> = [
     [/\.cjs$/, ".ts"],
@@ -25,6 +21,7 @@ async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string):
 
   const candidates = new Set<string>();
   const stripped = declaredPath.replace(/^\.\/dist\//, "").replace(/^dist\//, "");
+  const prefersSource = /^(?:\.\/)?dist\//.test(declaredPath);
   for (const sourceRoot of sourceRoots) {
     for (const [pattern, replacement] of extensionSwaps) {
       candidates.add(`${sourceRoot}${stripped}`.replace(pattern, replacement));
@@ -32,9 +29,23 @@ async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string):
     candidates.add(`${sourceRoot}${stripped}`);
   }
 
-  for (const candidate of candidates) {
-    if (candidate !== declaredPath && (await pathExists(path.join(rootPath, candidate)))) {
-      return candidate;
+  if (prefersSource) {
+    for (const candidate of candidates) {
+      if (candidate !== declaredPath && (await pathExists(path.join(rootPath, candidate)))) {
+        return candidate;
+      }
+    }
+  }
+
+  if (await pathExists(path.join(rootPath, declaredPath))) {
+    return declaredPath;
+  }
+
+  if (!prefersSource) {
+    for (const candidate of candidates) {
+      if (candidate !== declaredPath && (await pathExists(path.join(rootPath, candidate)))) {
+        return candidate;
+      }
     }
   }
 

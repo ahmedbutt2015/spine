@@ -18,6 +18,12 @@ Use this skill from a repository root to generate an onboarding tour for an unfa
 npm run onboard -- .
 ```
 
+Optional token-free preview first:
+
+```bash
+npm run map -- .
+```
+
 Optional prompt export:
 
 ```bash
@@ -44,9 +50,10 @@ npm run onboard -- . --synthesis-command "your-command-here"
 - Diagram rule: verified edges only, never guessed
 - Output target: `ONBOARDING.md`
 
-## Next implementation targets
+## Launch positioning
 
-1. Better subsystem heuristics for very large repos
-2. Stronger reading-order explanations
-3. Snapshot coverage across more real repos
-4. Public launch polish
+The clearest user story is:
+
+1. `/map` shows the verified architecture preview
+2. `/onboard` writes the full guide
+3. `.claude/REPO_CONTEXT.md` keeps future Claude sessions grounded in the repo

@@ -1,96 +1,201 @@
 # spine
 
-`spine` is the repo behind the `/onboard` Claude Code command: a codebase onboarding tool that produces an ordered reading tour, a mental model, gotchas, and a small verified architecture diagram.
+`spine` turns an unfamiliar repository into a verified onboarding guide.
 
-The detailed product brief, milestone plan, and implementation checklist live in [PROJECT_PLAN.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/PROJECT_PLAN.md).
+In one run it gives you:
 
-## Product shape
+- a small architecture diagram built from verified static-analysis edges only
+- a prioritized reading order for the files that matter first
+- a short mental model, subsystem summary, and gotchas
+- a shareable `mermaid.live` link
 
-- Repo name: `spine`
-- Claude Code command: `/onboard`
-- Distribution v1: Claude Code skill in `.claude-plugin/skills/onboard/`
-- Distribution v2: standalone CLI exposed as `onboard`
+If you open a repo and think "where do I even start?", `spine` is for that moment.
 
-## Current status
+## Why it exists
 
-The first implementation slice is in place:
+Most onboarding docs are stale, too broad, or guessed. `spine` takes a narrower approach:
 
-- Detect repo shape and dominant languages
-- Find likely entry points across TS/JS, Python, Go, and Rust
-- Extract a verified spine across TS/JS, Python, Go, and Rust
-- Generate a validated Mermaid diagram plus `mermaid.live` link
-- Cluster non-spine files into subsystems
-- Write `ONBOARDING.md` with a constrained synthesis layer and architecture map
+- it detects likely entry points
+- it extracts a small verified spine from real source relationships
+- it refuses to invent edges it cannot prove
+- it turns that verified structure into a readable tour
+
+That makes it useful both for humans and for Claude Code.
+
+## What you get
+
+### `/map`
+
+Use `/map` when you want the fastest deterministic preview.
+
+- no synthesis step
+- no `ONBOARDING.md`
+- just the validated Mermaid graph and `mermaid.live` link
+
+### `/onboard`
+
+Use `/onboard` when you want the full guide.
+
+- `ONBOARDING.md`
+- verified architecture map
+- reading order
+- mental model
+- subsystem summaries
+- gotchas
+- estimated read time
+
+## Quick start
+
+### Install from npm
+
+```bash
+npm install -g spine
+```
+
+Then run:
+
+```bash
+onboard .
+```
+
+Or for the map only:
+
+```bash
+onboard . --map-only
+```
+
+### Run from source
+
+```bash
+npm install
+npm run onboard -- .
+```
+
+For the deterministic map-only path:
+
+```bash
+npm run map -- .
+```
+
+## Use with Claude Code
+
+The v1 Claude Code distribution lives in `.claude-plugin/skills/`:
+
+- `.claude-plugin/skills/onboard/` for `/onboard`
+- `.claude-plugin/skills/map/` for `/map`
+
+The intended flow is:
+
+1. Run `/map` for a fast, token-free architecture preview.
+2. Run `/onboard` when you want the full reading tour.
+3. Let `spine` refresh `.claude/REPO_CONTEXT.md` so later Claude sessions inherit repo context.
+
+If you are not using Claude Code skills yet, the CLI gives the same core output:
+
+```bash
+onboard .
+onboard . --map-only
+```
+
+## Best first demo
+
+Start with `axios`.
+
+Why `axios` is the best launch benchmark:
+
+- the repo is well known, so the output is easy to judge
+- the architecture is real but still compact
+- the verified spine is small enough to understand at a glance
+- the before/after value shows up quickly
+
+Use the built-in benchmark catalog:
+
+```bash
+npm run benchmark:list
+npm run benchmark:clone -- axios
+npm run onboard -- benchmarks/repos/axios
+```
+
+Other strong follow-up demos:
+
+- `glow` for a clean Go CLI story
+- `poetry` for a larger Python codebase
+- `log` for a compact Rust library
+
+## Example output
+
+Typical `ONBOARDING.md` sections:
+
+- `TL;DR`
+- `Architecture map`
+- `Mental model`
+- `Reading order`
+- `Entry points found`
+- `Subsystems`
+- `Gotchas`
+- `Estimated read time`
+
+Typical CLI output:
+
+```text
+Detected library in javascript.
+Found 1 entry point(s).
+Synthesis source: deterministic.
+Wrote ONBOARDING.md
+Estimated cost: ~$0.008 input + ~$0.010 output = ~$0.018
+This tour covers 7 spine file(s) and 4 subsystems.
+Estimated savings: ~3.5 hours of manual exploration for ~$0.02 of LLM cost.
+```
+
+## Commands
+
+```bash
+npm run onboard -- .                         # full guide
+npm run map -- .                             # map only
+npm run onboard -- . --prompt-out prompt.txt
+npm run onboard -- . --synthesis-input .onboard-response.json
+npm run onboard -- . --synthesis-command "your-command-here"
+npm run onboard -- . --cost-model sonnet-4.6
+npm run onboard -- . --diff-against ONBOARDING.md
+```
+
+The built CLI also supports:
+
+```bash
+onboard . --out custom-onboarding.md
+onboard . --map-only --out architecture.mmd
+```
+
+## Supported languages
+
+Current verified spine coverage includes:
+
+- TypeScript / JavaScript
+- Python
+- Go
+- Rust
+- PHP
+
+## Product rules
+
+- verified edges only
+- one small diagram, not a giant graph dump
+- if Mermaid validation fails twice, the diagram is omitted
+- the synthesis layer may summarize verified structure, but may not invent architecture
+
+## Benchmarks and launch assets
+
+- benchmark catalog: [src/benchmarks/catalog.ts](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/src/benchmarks/catalog.ts)
+- before/after examples: [docs/before-after.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/docs/before-after.md)
+- launch blog draft: [docs/blog-v1.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/docs/blog-v1.md)
+- media prompts: [docs/media-prompts.md](/Applications/XAMPP/xamppfiles/htdocs/AI/spine/docs/media-prompts.md)
 
 ## Development
 
 ```bash
-npm install
+npm run check
 npm run test
-npm run onboard -- .
+npm run build
 ```
 
-That writes `ONBOARDING.md` into the target repo root.
-
-To inspect the exact LLM-safe synthesis prompt:
-
-```bash
-npm run onboard -- . --prompt-out .onboard-prompt.txt
-```
-
-To generate only the verified Mermaid architecture map:
-
-```bash
-npm run onboard -- . --map-only
-```
-
-To write the Mermaid graph to a file:
-
-```bash
-npm run onboard -- . --map-only --out architecture.mmd
-```
-
-To estimate cost for a specific model before synthesis:
-
-```bash
-npm run onboard -- . --cost-model sonnet-4.6
-```
-
-When the built-in Anthropic SDK is used, real token usage and cost are shown and appended to `.spine-cost.log` in the repo root.
-
-To use an external synthesis command that reads the prompt on stdin and returns JSON:
-
-```bash
-npm run onboard -- . --synthesis-command "your-command-here"
-```
-
-To read synthesis JSON from a file (for Claude Code skill flow):
-
-```bash
-npm run onboard -- . --synthesis-input .onboard-response.json
-```
-
-To compare current analysis against an existing ONBOARDING.md file:
-
-```bash
-npm run onboard -- . --diff-against ONBOARDING.md
-```
-
-## Benchmarks
-
-Use the benchmark catalog to pull down real repositories for milestone checks:
-
-```bash
-npm run benchmark:list
-npm run benchmark:clone -- axios poetry
-```
-
-Cloned benchmark repos land in `benchmarks/repos/` and stay out of git.
-
-## MVP roadmap
-
-1. Deterministic repo scan
-2. Verified spine extraction and edge retention
-3. Mermaid validation plus `mermaid.live` URL generation
-4. LLM synthesis over the verified structure
-5. Fixture snapshots for famous repos
+`npm run onboard` and `npm run map` execute the built CLI so the release path and local path stay aligned.

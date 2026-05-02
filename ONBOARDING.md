@@ -10,24 +10,24 @@ flowchart LR
   src_core_repoContext
   src_core_synthesis
   src_formatters_onboarding
+  src_core_cost
   src_core_detect
   src_core_diagram
-  src_core_entries
   src_core_analyze --> src_core_detect
   src_core_analyze --> src_core_diagram
-  src_core_analyze --> src_core_entries
+  src_core_synthesis --> src_core_cost
 ```
 
-View / edit on [mermaid.live](https://mermaid.live/view#pako:eNp9kLEOwjAMRH-l8tz-QAcWGJlgRapM4rSRmhg5rqBU_XeKgCFSxPp0vvPdAoYtQQtu5LsZULQ6ni6xqpKYzrBQhxHH-UkZE7rxnqPSQzOe5qgDJZ9-1LEEVCVJHccro1gf--zEkpLJXazHXjBkjKKKp1T6rGqa3V-_sq4QUhR-k6GGQFsZb6FdYGsZ3qtZcjiNCmsNOCmf52igVZmohulmUenwiYHW4ZhofQH3tIg7)
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNp9kMEKwkAMRH9lybn9gR686NGTXoUSd9N2od1INovW0n-3RRRWitfHzGQyE1h2BBU0Pd9th6LmeLoEY6LY2rJQjQH78UkZE7rxnoPSQzMex6AdRR8_tGEZUJUk1hyujOJ8aDOL5ZhnOFKyP8hjKzhs1TJlufvr3dZtBH6759K1HxQw0PKId1BNsKiGdTFHDaZeYS4Ak_J5DBYqlUQFpJtDpcP7ClQN9pHmF8Mwhq8)
 
 Legend:
 - `src_core_analyze` = `src/core/analyze.ts`
 - `src_core_repoContext` = `src/core/repoContext.ts`
 - `src_core_synthesis` = `src/core/synthesis.ts`
 - `src_formatters_onboarding` = `src/formatters/onboarding.ts`
+- `src_core_cost` = `src/core/cost.ts`
 - `src_core_detect` = `src/core/detect.ts`
 - `src_core_diagram` = `src/core/diagram.ts`
-- `src_core_entries` = `src/core/entries.ts`
 
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
@@ -39,9 +39,9 @@ Treat the command surface as the product: startup, argument flow, and the first 
 - `src/core/repoContext.ts` - This file sits on the verified architecture spine and explains the main runtime handoff.
 - `src/core/synthesis.ts` - This file sits on the verified architecture spine and explains the main runtime handoff.
 - `src/formatters/onboarding.ts` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `src/core/cost.ts` - This file sits on the verified architecture spine and explains the main runtime handoff.
 - `src/core/detect.ts` - This file sits on the verified architecture spine and explains the main runtime handoff.
 - `src/core/diagram.ts` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- `src/core/entries.ts` - This file sits on the verified architecture spine and explains the main runtime handoff.
 - `src/cli.ts` - This is a detected entry point, so it shows how execution begins.
 - `src/index.ts` - This is a detected entry point, so it shows how execution begins.
 - `README.md` - Defines a key project contract or context file.
@@ -71,9 +71,15 @@ Where it lives: `benchmarks/**`
 Entry point: `src/benchmarks/catalog.ts`
 Skip unless: Skip unless your task touches the benchmarks area directly.
 
+### Docs
+What it does: Documentation and non-runtime reference material.
+Where it lives: `docs/**`
+Entry point: `docs/before-after.md`
+Skip unless: Skip unless you are updating docs or looking for usage guidance.
+
 ## Gotchas
 - Detected CLI bin entry.
 - The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
 
 ## Estimated read time
-15 minutes for the spine, 1 hour for fuller coverage.
+13 minutes for the spine, 1 hour for fuller coverage.
