@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { appendFile, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { analyzeRepository } from "./core/analyze.js";
-import { writeRepoContextFile } from "./core/repoContext.js";
+import { computeContextContentHash, writeRepoContextFile } from "./core/repoContext.js";
 import { synthesizeTour } from "./core/synthesis.js";
 import { renderOnboardingMarkdown } from "./formatters/onboarding.js";
 import {
@@ -25,6 +25,7 @@ interface CliOptions {
   contextFilePath?: string;
   mapOnly: boolean;
   costModel?: string;
+  diffAgainst?: string;
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -91,6 +92,12 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (token === "--cost-model") {
       options.costModel = argv[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (token === "--diff-against") {
+      options.diffAgainst = argv[index + 1];
       index += 1;
       continue;
     }
@@ -172,6 +179,61 @@ async function main(): Promise<void> {
     synthesisInputPath: options.synthesisInputPath,
     anthropicModel: options.anthropicModel ?? process.env.SPINE_ANTHROPIC_MODEL
   });
+
+  if (options.diffAgainst) {
+    const existingPath = path.resolve(process.cwd(), options.diffAgainst);
+    const existingContent = await readFile(existingPath, "utf8");
+    const newContent = renderOnboardingMarkdown(result, synthesis);
+
+    process.stdout.write(`Comparing current analysis against ${existingPath}:\n\n`);
+
+    // Extract and compare spine files
+    const extractSpineFiles = (content: string): string[] => {
+      const lines = content.split("\n");
+      const legendStart = lines.findIndex(line => line.includes("Legend:"));
+      if (legendStart === -1) return [];
+
+      const files: string[] = [];
+      for (let i = legendStart + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim() === "" || line.startsWith("##")) break;
+        const match = line.match(/- `([^`]+)` = `([^`]+)`/);
+        if (match) {
+          files.push(match[2]); // Use the actual file path
+        }
+      }
+
+      return files.sort();
+    };
+
+    const oldSpineFiles = extractSpineFiles(existingContent);
+    const newSpineFiles = extractSpineFiles(newContent);
+
+    const added = newSpineFiles.filter(f => !oldSpineFiles.includes(f));
+    const removed = oldSpineFiles.filter(f => !newSpineFiles.includes(f));
+
+    if (added.length > 0) {
+      process.stdout.write("New spine files:\n");
+      for (const file of added) {
+        process.stdout.write(`  + ${file}\n`);
+      }
+      process.stdout.write("\n");
+    }
+
+    if (removed.length > 0) {
+      process.stdout.write("Removed spine files:\n");
+      for (const file of removed) {
+        process.stdout.write(`  - ${file}\n`);
+      }
+      process.stdout.write("\n");
+    }
+
+    if (added.length === 0 && removed.length === 0) {
+      process.stdout.write("Spine files unchanged.\n");
+    }
+
+    return;
+  }
 
   if (options.json) {
     process.stdout.write(`${JSON.stringify({ ...result, synthesis }, null, 2)}\n`);

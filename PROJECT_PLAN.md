@@ -315,32 +315,32 @@ ideas to evaluate after the current wave lands.
 
 ### `/map` command — diagram-only mode
 
-- [ ] CLI flag `--map-only` that skips synthesis and prints just the validated
+- [x] CLI flag `--map-only` that skips synthesis and prints just the validated
       Mermaid code plus the `mermaid.live` URL
-- [ ] Optional `--out path.mmd` to write the Mermaid source to a file
-- [ ] Companion Claude Code skill at `.claude-plugin/skills/map/`
+- [x] Optional `--out path.mmd` to write the Mermaid source to a file
+- [x] Companion Claude Code skill at `.claude-plugin/skills/map/`
 
 ### Token cost transparency
 
-- [ ] Pre-flight estimate: count prompt characters, convert to tokens at
+- [x] Pre-flight estimate: count prompt characters, convert to tokens at
       `ceil(chars / 3.5)`, print estimated input cost at the chosen model's
       published price
-- [ ] Configurable model via `--cost-model` flag (default Sonnet)
-- [ ] Actual usage: when running through the built-in SDK, surface real token
+- [x] Configurable model via `--cost-model` flag (default Sonnet)
+- [x] Actual usage: when running through the built-in SDK, surface real token
       counts and cost from `response.usage`
 
 ### Per-run efficiency / value statement
 
-- [ ] After writing `ONBOARDING.md`, print a one-line value summary like
+- [x] After writing `ONBOARDING.md`, print a one-line value summary like
       `Estimated savings: ~3 hours of manual exploration for ~$0.05`
-- [ ] Derived from spine line count, subsystem file count, and the cost
+- [x] Derived from spine line count, subsystem file count, and the cost
       estimate from the previous item
-- [ ] `docs/before-after.md` showing two real repos side-by-side, with and
+- [x] `docs/before-after.md` showing two real repos side-by-side, with and
       without `/onboard`, as a launch asset
 
 ### High-ROI v2 ideas
 
-- [ ] Diff mode: re-run analysis and report only what changed in the spine
+- [x] Diff mode: re-run analysis and report only what changed in the spine
       vs. the saved `ONBOARDING.md`
 - [ ] Per-subsystem mini-diagrams in addition to the main spine diagram
 - [ ] GitHub Action that re-runs `/onboard` on PRs touching spine files and

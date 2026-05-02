@@ -70,6 +70,12 @@ To read synthesis JSON from a file (for Claude Code skill flow):
 npm run onboard -- . --synthesis-input .onboard-response.json
 ```
 
+To compare current analysis against an existing ONBOARDING.md file:
+
+```bash
+npm run onboard -- . --diff-against ONBOARDING.md
+```
+
 ## Benchmarks
 
 Use the benchmark catalog to pull down real repositories for milestone checks:

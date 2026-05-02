@@ -39,10 +39,40 @@ npm run onboard -- benchmarks/repos/axios
 
 This gives a developer:
 
-- a short TL;DR for the repo shape
-- a mental model of the main runtime path
-- an ordered reading list for the most important files
-- a validated architecture diagram
+- **TL;DR**: "This repository is a library built primarily in javascript, typescript. The verified spine currently runs through `index.js`, `lib/axios.js`, `lib/adapters/adapters.js`."
+- **Architecture diagram**: Validated Mermaid showing 7 spine files with verified edges
+- **Reading order**: 9 prioritized files to read first, including entry points and spine files
+- **Mental model**: "Start from the exported surface and work inward; the stable public entry points are the fastest way to orient."
+
+**Sample output:**
+```mermaid
+flowchart LR
+  index
+  lib_axios
+  lib_adapters_adapters
+  lib_cancel_CanceledError
+  lib_cancel_CancelToken
+  lib_cancel_isCancel
+  lib_core_Axios
+  index --> lib_axios
+  lib_axios --> lib_adapters_adapters
+  lib_axios --> lib_cancel_CanceledError
+  lib_axios --> lib_cancel_CancelToken
+  lib_axios --> lib_cancel_isCancel
+  lib_axios --> lib_core_Axios
+  lib_cancel_CancelToken --> lib_cancel_CanceledError
+```
+
+**Reading order:**
+- `index.js` - This is a detected entry point, so it shows how execution begins.
+- `lib/axios.js` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `lib/adapters/adapters.js` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `lib/cancel/CanceledError.js` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `lib/cancel/CancelToken.js` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `lib/cancel/isCancel.js` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `lib/core/Axios.js` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `README.md` - Defines a key project contract or context file.
+- `package.json` - Defines a key project contract or context file.
 
 ---
 
@@ -50,37 +80,50 @@ This gives a developer:
 
 ### Before
 
-In a framework repo like `slim`, the onboarding path is even harder because the public surface and the runtime path are separated.
+A PHP developer encountering the Slim framework might start by:
 
-A manual onboarding attempt often involves:
-
-- reading the README and framework overview
-- locating the main app/bootstrap files
-- tracing hooks and middleware initialization
-- following the verified spine through the runtime path
+- Reading `README.md` for basic usage
+- Looking at `composer.json` for dependencies
+- Guessing at entry points like `Slim/App.php`
+- Manually tracing through middleware and routing interfaces
 
 ### After
 
-`spine` supplies the verified path automatically and surfaces the diagram before the full LLM tour.
+`spine` analyzes the PHP codebase and produces a complete onboarding guide.
 
 ```bash
 npm run onboard -- benchmarks/repos/slim
 ```
 
-That means the developer can verify the architecture first, then commit to the full `/onboard` tour.
+**TL;DR**: "This repository is a library built primarily in php. The verified spine currently runs through `Slim/App.php`, `Slim/Factory/ServerRequestCreatorFactory.php`, `Slim/Interfaces/CallableResolverInterface.php`."
 
----
+**Architecture diagram:**
+```mermaid
+flowchart LR
+  Slim_App
+  Slim_Factory_ServerRequestCreatorFactory
+  Slim_Interfaces_CallableResolverInterface
+  Slim_Interfaces_MiddlewareDispatcherInterface
+  Slim_Interfaces_RouteCollectorInterface
+  Slim_Interfaces_RouteResolverInterface
+  Slim_Middleware_BodyParsingMiddleware
+  Slim_App --> Slim_Factory_ServerRequestCreatorFactory
+  Slim_App --> Slim_Interfaces_CallableResolverInterface
+  Slim_App --> Slim_Interfaces_MiddlewareDispatcherInterface
+  Slim_App --> Slim_Interfaces_RouteCollectorInterface
+  Slim_App --> Slim_Interfaces_RouteResolverInterface
+  Slim_App --> Slim_Middleware_BodyParsingMiddleware
+```
 
-## What `spine` adds
-
-- `npm run onboard -- . --map-only` produces the Mermaid graph only
-- `npm run onboard -- .` writes `ONBOARDING.md`
-- `--cost-model` makes the preflight token estimate explicit
-- the built-in pipeline is deterministic until synthesis is required
-
-## Screenshot guidance
-
-To complete this doc for launch, capture:
+**Reading order:**
+- `Slim/App.php` - This is a detected entry point, so it shows how execution begins.
+- `Slim/Factory/ServerRequestCreatorFactory.php` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `Slim/Interfaces/CallableResolverInterface.php` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `Slim/Interfaces/MiddlewareDispatcherInterface.php` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `Slim/Interfaces/RouteCollectorInterface.php` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `Slim/Interfaces/RouteResolverInterface.php` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `Slim/Middleware/BodyParsingMiddleware.php` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- `README.md` - Defines a key project contract or context file.
 
 - the raw `README.md` and file tree for a repo before `spine`
 - the generated `ONBOARDING.md` after running `spine`
