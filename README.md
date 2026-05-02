@@ -2,7 +2,7 @@
 
 `spine` turns an unfamiliar repository into a verified onboarding guide.
 
-![spine hero](assets/spine-hero.png)
+![spine terminal demo](assets/spine-terminal-anim.gif)
 
 In one run it gives you:
 
@@ -91,6 +91,13 @@ The intended flow is:
 1. Run `/map` for a fast, token-free architecture preview.
 2. Run `/onboard` when you want the full reading tour.
 3. Let `spine` refresh `.claude/REPO_CONTEXT.md` so later Claude sessions inherit repo context.
+
+Why this is useful for Claude Code users:
+
+- `spine` writes `.claude/REPO_CONTEXT.md` automatically by default
+- that file captures a compact verified snapshot of the repo
+- later Claude sessions can start more grounded instead of re-discovering the same project shape from scratch
+- the built-in Anthropic path supports prompt caching and cost reporting for repeated runs
 
 If you are not using Claude Code skills yet, the CLI gives the same core output:
 
@@ -191,6 +198,9 @@ Current verified spine coverage includes:
 - before/after examples: [docs/before-after.md](docs/before-after.md)
 - launch blog draft: [docs/blog-v1.md](docs/blog-v1.md)
 - media prompts: [docs/media-prompts.md](docs/media-prompts.md)
+- launch cover image: [assets/spine-cover.png](assets/spine-cover.png)
+- launch storyboard: [assets/spine-storyboard.png](assets/spine-storyboard.png)
+- static hero image: [assets/spine-hero.png](assets/spine-hero.png)
 
 ## Development
 
