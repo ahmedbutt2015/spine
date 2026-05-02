@@ -9,7 +9,8 @@ Use this skill from a repository root to generate an onboarding tour for an unfa
 3. Generate and validate a Mermaid diagram from the verified spine.
 4. Cluster the remaining files into heuristic subsystems.
 5. Build a synthesis prompt that only contains verified structure and short code signatures.
-6. Write `ONBOARDING.md` into the target repo root.
+6. **When running as Claude Code skill**: Write prompt to file, ask Claude to synthesize JSON, then read JSON back to generate `ONBOARDING.md`.
+7. Write `ONBOARDING.md` into the target repo root.
 
 ## Local command
 
@@ -23,6 +24,12 @@ Optional prompt export:
 npm run onboard -- . --prompt-out .onboard-prompt.txt
 ```
 
+Optional synthesis input (for Claude Code skill flow):
+
+```bash
+npm run onboard -- . --synthesis-input .onboard-response.json
+```
+
 Optional external synthesis command:
 
 ```bash
@@ -33,6 +40,7 @@ npm run onboard -- . --synthesis-command "your-command-here"
 
 - Repo brand: `spine`
 - User-facing Claude Code command: `/onboard`
+- Companion map-only command: `/map`
 - Diagram rule: verified edges only, never guessed
 - Output target: `ONBOARDING.md`
 

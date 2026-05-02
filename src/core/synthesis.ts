@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { computeAnthropicCost, formatCostEstimate, resolveCostModel } from "./cost.js";
+import type { CostModelKey } from "./cost.js";
 
 import type {
   AnalysisResult,
@@ -13,11 +15,19 @@ import { pathExists, readTextIfExists } from "./repository.js";
 export interface SynthesisOptions {
   promptOutPath?: string;
   synthesisCommand?: string;
+  synthesisInputPath?: string;
   anthropicModel?: string;
 }
 
 export interface SynthesisExecutor {
   execute(prompt: string): Promise<string>;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_creation_input_tokens?: number | null;
+    cache_read_input_tokens?: number | null;
+  };
+  model?: CostModelKey;
 }
 
 interface SynthesisPayload {
@@ -224,6 +234,31 @@ function estimateReadTime(
   };
 }
 
+function buildActualCostSummary(
+  model: CostModelKey,
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_creation_input_tokens?: number | null;
+    cache_read_input_tokens?: number | null;
+  }
+): TourSynthesis["actualCost"] {
+  const estimate = formatCostEstimate(model, usage.input_tokens, usage.output_tokens);
+  const totalCost = computeAnthropicCost(model, usage);
+
+  return {
+    model,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cacheCreationInputTokens: usage.cache_creation_input_tokens ?? 0,
+    cacheReadInputTokens: usage.cache_read_input_tokens ?? 0,
+    totalCost,
+    inputCost: estimate.inputCost,
+    outputCost: estimate.outputCost,
+    cacheCost: totalCost - estimate.inputCost - estimate.outputCost
+  };
+}
+
 function buildDeterministicGotchas(analysis: AnalysisResult): string[] {
   const gotchas = [...analysis.detection.reasons];
   if (analysis.diagram) {
@@ -335,8 +370,18 @@ async function maybeCreateAnthropicExecutor(model: string | undefined): Promise<
     return null;
   }
 
+  const modelKey = resolveCostModel(model);
   const { createAnthropicExecutor } = await import("./anthropic.js");
-  return createAnthropicExecutor({ model, apiKey });
+  return createAnthropicExecutor({ model: modelKey, apiKey });
+}
+
+function createFileExecutor(inputPath: string): SynthesisExecutor {
+  return {
+    async execute(): Promise<string> {
+      const content = await readFile(inputPath, "utf8");
+      return content.trim();
+    }
+  };
 }
 
 function createCommandExecutor(command: string): SynthesisExecutor {
@@ -389,6 +434,7 @@ export async function synthesizeTour(
 
   const effectiveExecutor =
     executor ??
+    (options.synthesisInputPath ? createFileExecutor(options.synthesisInputPath) : null) ??
     (await maybeCreateAnthropicExecutor(options.anthropicModel)) ??
     (options.synthesisCommand ? createCommandExecutor(options.synthesisCommand) : null);
 
@@ -400,9 +446,18 @@ export async function synthesizeTour(
     const raw = await effectiveExecutor.execute(prompt);
     const parsed = JSON.parse(raw);
     const validated = validateLlmResponse(parsed, analysis, prompt);
+    const actualCost =
+      effectiveExecutor.model && effectiveExecutor.usage
+        ? buildActualCostSummary(effectiveExecutor.model, effectiveExecutor.usage)
+        : undefined;
+
     if (validated) {
-      return validated;
+      const source = options.synthesisInputPath ? "file" : "llm";
+      return actualCost ? { ...validated, source, actualCost } : { ...validated, source };
     }
+
+    const deterministic = buildDeterministicSynthesis(prompt, analysis, spineLineCount);
+    return actualCost ? { ...deterministic, actualCost } : deterministic;
   } catch {
     // Fall back to deterministic synthesis below.
   }

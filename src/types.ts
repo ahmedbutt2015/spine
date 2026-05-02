@@ -91,8 +91,20 @@ export interface EstimatedReadTime {
   fullCoverageHours: number;
 }
 
+export interface ActualCostSummary {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationInputTokens: number;
+  cacheReadInputTokens: number;
+  totalCost: number;
+  inputCost: number;
+  outputCost: number;
+  cacheCost: number;
+}
+
 export interface TourSynthesis {
-  source: "deterministic" | "llm";
+  source: "deterministic" | "llm" | "file";
   prompt: string;
   tlDr: string;
   mentalModel: string;
@@ -100,6 +112,7 @@ export interface TourSynthesis {
   subsystems: SubsystemSummary[];
   gotchas: string[];
   estimatedReadTime: EstimatedReadTime;
+  actualCost?: ActualCostSummary;
 }
 
 export interface AnalysisResult {

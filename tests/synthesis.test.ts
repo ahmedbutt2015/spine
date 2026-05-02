@@ -1,9 +1,12 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { analyzeRepository } from "../src/core/analyze.js";
 import { buildSynthesisPrompt, synthesizeTour } from "../src/core/synthesis.js";
+import type { CostModelKey } from "../src/core/cost.js";
 
 const fixturesRoot = path.resolve(import.meta.dirname, "fixtures");
 
@@ -99,6 +102,115 @@ describe("subsystem clustering and synthesis", () => {
 
     expect(invalid.source).toBe("deterministic");
     expect(invalid.readingOrder[0]?.path).toBe("main.go");
+  });
+
+  describe("--synthesis-input file handoff", () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await mkdtemp(path.join(tmpdir(), "spine-synth-"));
+    });
+
+    afterEach(async () => {
+      await rm(tempDir, { recursive: true, force: true });
+    });
+
+    it("loads validated synthesis from a file written by an external LLM", async () => {
+      const result = await analyzeRepository(path.join(fixturesRoot, "spine-go"));
+      const responsePath = path.join(tempDir, "response.json");
+      await writeFile(
+        responsePath,
+        JSON.stringify({
+          tlDr: "From file",
+          mentalModel: "From file",
+          readingOrder: [{ path: "main.go", why: "Start here." }],
+          subsystems: [],
+          gotchas: ["From file"],
+          estimatedReadTime: { spineMinutes: 15, fullCoverageHours: 1 }
+        }),
+        "utf8"
+      );
+
+      const synthesis = await synthesizeTour(
+        path.join(fixturesRoot, "spine-go"),
+        result,
+        { synthesisInputPath: responsePath }
+      );
+
+      expect(synthesis.source).toBe("file");
+      expect(synthesis.tlDr).toBe("From file");
+    });
+
+    it("falls back to deterministic when the file references unknown paths", async () => {
+      const result = await analyzeRepository(path.join(fixturesRoot, "spine-go"));
+      const responsePath = path.join(tempDir, "response.json");
+      await writeFile(
+        responsePath,
+        JSON.stringify({
+          tlDr: "Bad",
+          mentalModel: "Bad",
+          readingOrder: [{ path: "fake/file.go", why: "invented" }],
+          subsystems: [],
+          gotchas: [],
+          estimatedReadTime: { spineMinutes: 1, fullCoverageHours: 1 }
+        }),
+        "utf8"
+      );
+
+      const synthesis = await synthesizeTour(
+        path.join(fixturesRoot, "spine-go"),
+        result,
+        { synthesisInputPath: responsePath }
+      );
+
+      expect(synthesis.source).toBe("deterministic");
+    });
+  });
+
+  it("attaches actual Anthropic usage when the built-in executor returns usage metadata", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-go");
+    const result = await analyzeRepository(rootPath);
+    const executor = {
+      model: "claude-sonnet-4-6" as CostModelKey,
+      usage: {
+        input_tokens: 1200,
+        output_tokens: 400,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0
+      },
+      execute: async () =>
+        JSON.stringify({
+          tlDr: "LLM TLDR",
+          mentalModel: "LLM mental model",
+          readingOrder: [{ path: "main.go", why: "Start here." }],
+          subsystems: [
+            {
+              label: "Data",
+              whatItDoes: "Handles storage.",
+              whereItLives: "store/**",
+              entryPoint: "store/store.go",
+              skipUnless: "Skip unless data flow matters."
+            }
+          ],
+          gotchas: ["LLM gotcha"],
+          estimatedReadTime: { spineMinutes: 25, fullCoverageHours: 2 }
+        })
+    };
+
+    const synthesis = await synthesizeTour(rootPath, result, {}, executor);
+
+    expect(synthesis.source).toBe("llm");
+    expect(synthesis.actualCost).toEqual({
+      model: "claude-sonnet-4-6",
+      inputTokens: 1200,
+      outputTokens: 400,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      totalCost: expect.any(Number),
+      inputCost: expect.any(Number),
+      outputCost: expect.any(Number),
+      cacheCost: expect.any(Number)
+    });
   });
 });
 

@@ -2,6 +2,14 @@
 
 `/onboard` now builds a synthesis prompt dynamically from verified repo data.
 
+## Claude Code Skill Flow
+
+When invoked as `/onboard` in Claude Code:
+
+1. `spine` runs with `--prompt-out .onboard-prompt.txt` to write the synthesis prompt
+2. Claude processes the prompt from `.onboard-prompt.txt` and writes JSON response to `.onboard-response.json`
+3. `spine` runs again with `--synthesis-input .onboard-response.json` to generate `ONBOARDING.md`
+
 ## Hard rules
 
 - Only verified files, edges, and subsystem summaries may be used.

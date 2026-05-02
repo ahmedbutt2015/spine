@@ -38,10 +38,36 @@ To inspect the exact LLM-safe synthesis prompt:
 npm run onboard -- . --prompt-out .onboard-prompt.txt
 ```
 
+To generate only the verified Mermaid architecture map:
+
+```bash
+npm run onboard -- . --map-only
+```
+
+To write the Mermaid graph to a file:
+
+```bash
+npm run onboard -- . --map-only --out architecture.mmd
+```
+
+To estimate cost for a specific model before synthesis:
+
+```bash
+npm run onboard -- . --cost-model sonnet-4.6
+```
+
+When the built-in Anthropic SDK is used, real token usage and cost are shown and appended to `.spine-cost.log` in the repo root.
+
 To use an external synthesis command that reads the prompt on stdin and returns JSON:
 
 ```bash
 npm run onboard -- . --synthesis-command "your-command-here"
+```
+
+To read synthesis JSON from a file (for Claude Code skill flow):
+
+```bash
+npm run onboard -- . --synthesis-input .onboard-response.json
 ```
 
 ## Benchmarks
