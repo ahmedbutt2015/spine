@@ -212,3 +212,17 @@ npm run build
 ```
 
 `npm run onboard` and `npm run map` execute the built CLI so the release path and local path stay aligned.
+
+## Contributing and testing
+
+Contributions and real-repo testing are very welcome.
+
+- open a bug report if `spine` finds the wrong entry points or produces misleading output
+- open repo test feedback if you try `spine` on a real codebase and want to share what matched reality and what did not
+- open a PR if you want to improve detection, docs, benchmarks, or output quality
+
+Start here:
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
+- [Repo test feedback template](.github/ISSUE_TEMPLATE/repo_test_feedback.md)
