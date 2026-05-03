@@ -1,6 +1,7 @@
 # spine
 
 `spine` turns an unfamiliar repository into a verified onboarding guide.
+[![npm version](https://img.shields.io/npm/v/%40spine-io%2Fonboard?logo=npm)](https://www.npmjs.com/package/@spine-io/onboard) [![npm downloads](https://img.shields.io/npm/dt/%40spine-io%2Fonboard?logo=npm&label=downloads)](https://www.npmjs.com/package/@spine-io/onboard)
 
 ![spine terminal demo](assets/spine-terminal-anim.gif)
 
