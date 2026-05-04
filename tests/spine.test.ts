@@ -98,9 +98,9 @@ describe("extractVerifiedSpine", () => {
     expect(spine.nodes).toEqual([
       "manage.py",
       "app/main.py",
-      "app/config.py",
       "app/routes.py",
-      "app/services/user_service.py"
+      "app/services/user_service.py",
+      "app/config.py"
     ]);
     expect(spine.edges).toEqual([
       { from: "app/main.py", to: "app/config.py", kind: "import" },
@@ -129,6 +129,26 @@ describe("extractVerifiedSpine", () => {
     ]);
   });
 
+  it("follows Python package-root re-exports from __init__.py", async () => {
+    const rootPath = path.join(fixturesRoot, "spine-python-library");
+    const entryPoints = await findEntryPoints(rootPath);
+    const spine = await extractVerifiedSpine(rootPath, entryPoints);
+
+    expect(entryPoints.map((entryPoint) => entryPoint.path)).toEqual(["src/clickish/__init__.py"]);
+    expect(spine.supportedLanguages).toEqual(["python"]);
+    expect(spine.entrySeeds).toEqual(["src/clickish/__init__.py"]);
+    expect(spine.nodes).toEqual([
+      "src/clickish/__init__.py",
+      "src/clickish/core.py",
+      "src/clickish/context.py"
+    ]);
+    expect(spine.edges).toEqual([
+      { from: "src/clickish/__init__.py", to: "src/clickish/context.py", kind: "import" },
+      { from: "src/clickish/__init__.py", to: "src/clickish/core.py", kind: "import" },
+      { from: "src/clickish/core.py", to: "src/clickish/context.py", kind: "import" }
+    ]);
+  });
+
   it("builds a verified module spine for a Rust crate", async () => {
     const rootPath = path.join(fixturesRoot, "spine-rust");
     const entryPoints = await findEntryPoints(rootPath);
@@ -138,9 +158,9 @@ describe("extractVerifiedSpine", () => {
     expect(spine.entrySeeds).toEqual(["src/lib.rs"]);
     expect(spine.nodes).toEqual([
       "src/lib.rs",
+      "src/services/mod.rs",
       "src/config.rs",
       "src/routes/mod.rs",
-      "src/services/mod.rs",
       "src/services/user_service.rs"
     ]);
     expect(spine.edges).toEqual([
@@ -178,9 +198,9 @@ describe("extractVerifiedSpine", () => {
     expect(spine.entrySeeds).toEqual(["main.go"]);
     expect(spine.nodes).toEqual([
       "main.go",
-      "config/config.go",
       "routes/routes.go",
       "service/service.go",
+      "config/config.go",
       "store/store.go"
     ]);
     expect(spine.edges).toEqual([
@@ -228,12 +248,14 @@ describe("extractVerifiedSpine", () => {
       "public/index.php",
       "src/Http/Router.php",
       "src/Controllers/HomeController.php",
-      "src/Services/UserService.php"
+      "src/Services/UserService.php",
+      "src/Models/User.php"
     ]);
     expect(spine.edges).toEqual([
       { from: "public/index.php", to: "src/Http/Router.php", kind: "import" },
       { from: "src/Controllers/HomeController.php", to: "src/Services/UserService.php", kind: "import" },
-      { from: "src/Http/Router.php", to: "src/Controllers/HomeController.php", kind: "import" }
+      { from: "src/Http/Router.php", to: "src/Controllers/HomeController.php", kind: "import" },
+      { from: "src/Services/UserService.php", to: "src/Models/User.php", kind: "import" }
     ]);
   });
 
@@ -295,6 +317,7 @@ describe("extractVerifiedSpine", () => {
       "spine-ts-paths",
       "spine-python",
       "spine-python-src",
+      "spine-python-library",
       "spine-rust",
       "spine-rust-workspace",
       "spine-go",

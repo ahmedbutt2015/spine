@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { EntryPoint, SubsystemCluster } from "../types.js";
@@ -205,11 +206,51 @@ function shouldIncludeInSubsystems(filePath: string): boolean {
   return true;
 }
 
-function chooseClusterEntryPoint(
+function buildLocalReferencePattern(targetFilePath: string): RegExp | null {
+  const extension = path.posix.extname(targetFilePath).toLowerCase();
+  const basename = path.posix.basename(targetFilePath, extension);
+  const directoryName = path.posix.basename(path.posix.dirname(targetFilePath));
+
+  if ([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"].includes(extension)) {
+    const importable = basename === "index" ? directoryName : basename;
+    return importable ? new RegExp(`["'][^"']*\\b${importable.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^"']*["']`) : null;
+  }
+
+  if (extension === ".py") {
+    const importable = basename === "__init__" ? directoryName : basename;
+    return importable
+      ? new RegExp(`(?:from|import)\\s+[\\w\\.]*${importable.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`)
+      : null;
+  }
+
+  if (extension === ".rs") {
+    const importable = basename === "mod" ? directoryName : basename;
+    return importable
+      ? new RegExp(`\\bmod\\s+${importable.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*;`)
+      : null;
+  }
+
+  if (extension === ".go") {
+    return basename
+      ? new RegExp(`["'][^"']*\\b${directoryName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`)
+      : null;
+  }
+
+  if (extension === ".php") {
+    return basename
+      ? new RegExp(`\\buse\\s+[\\\\\\w]*\\\\?${basename.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`)
+      : null;
+  }
+
+  return null;
+}
+
+async function chooseClusterEntryPoint(
+  rootPath: string,
   files: string[],
   entryPoints: EntryPoint[],
   clusterKey: string
-): string | null {
+): Promise<string | null> {
   const entryPaths = new Set(entryPoints.map((entryPoint) => entryPoint.path));
   const directEntry = files.find((filePath) => entryPaths.has(filePath));
   if (directEntry) {
@@ -234,6 +275,55 @@ function chooseClusterEntryPoint(
   const conventionalEntry = candidatePool.find((filePath) =>
     /(index|main|app|router|routes|config|mod|lib)\.[^.]+$/.test(filePath)
   );
+
+  const intraClusterScores = new Map<string, number>();
+  const fileSources = new Map<string, string>();
+
+  for (const filePath of files) {
+    try {
+      fileSources.set(filePath, await readFile(path.join(rootPath, filePath), "utf8"));
+    } catch {
+      // Ignore unreadable files when scoring cluster entry points.
+    }
+  }
+
+  for (const targetFile of candidatePool) {
+    const pattern = buildLocalReferencePattern(targetFile);
+    if (!pattern) {
+      continue;
+    }
+
+    for (const [sourceFile, source] of fileSources.entries()) {
+      if (sourceFile === targetFile) {
+        continue;
+      }
+
+      if (pattern.test(source)) {
+        intraClusterScores.set(targetFile, (intraClusterScores.get(targetFile) ?? 0) + 1);
+      }
+    }
+  }
+
+  const importedByPeers = [...candidatePool].sort((left, right) => {
+    const rightScore = intraClusterScores.get(right) ?? 0;
+    const leftScore = intraClusterScores.get(left) ?? 0;
+    if (rightScore !== leftScore) {
+      return rightScore - leftScore;
+    }
+
+    const rightConventional = conventionalEntry === right ? 1 : 0;
+    const leftConventional = conventionalEntry === left ? 1 : 0;
+    if (rightConventional !== leftConventional) {
+      return rightConventional - leftConventional;
+    }
+
+    return left.localeCompare(right);
+  });
+
+  if ((intraClusterScores.get(importedByPeers[0] ?? "") ?? 0) > 0) {
+    return importedByPeers[0] ?? null;
+  }
+
   if (conventionalEntry) {
     return conventionalEntry;
   }
@@ -265,25 +355,30 @@ export async function clusterSubsystems(
     grouped.set(key, existing);
   }
 
-  return [...grouped.entries()]
-    .map(([key, clusterFiles]) => {
-      const sortedFiles = clusterFiles.sort();
-      const copy = LABEL_COPY[key] ?? {
-        label: key.charAt(0).toUpperCase() + key.slice(1).replace(/[-_]/g, " "),
-        whatItDoes: `Files grouped around the ${key} part of the codebase.`,
-        skipUnless: `Skip unless your task touches the ${key} area directly.`
-      };
+  return (await Promise.all(
+    [...grouped.entries()]
+      .map(([key, clusterFiles]) => {
+        const sortedFiles = clusterFiles.sort();
+        const copy = LABEL_COPY[key] ?? {
+          label: key.charAt(0).toUpperCase() + key.slice(1).replace(/[-_]/g, " "),
+          whatItDoes: `Files grouped around the ${key} part of the codebase.`,
+          skipUnless: `Skip unless your task touches the ${key} area directly.`
+        };
 
-      return {
-        key,
-        label: copy.label,
-        files: sortedFiles,
-        pathGlob: inferPathGlob(sortedFiles),
-        entryPoint: chooseClusterEntryPoint(sortedFiles, entryPoints, key),
-        whatItDoes: copy.whatItDoes,
-        skipUnless: copy.skipUnless
-      };
-    })
+        return {
+          key,
+          label: copy.label,
+          files: sortedFiles,
+          pathGlob: inferPathGlob(sortedFiles),
+          whatItDoes: copy.whatItDoes,
+          skipUnless: copy.skipUnless
+        };
+      })
+      .map(async (cluster) => ({
+        ...cluster,
+        entryPoint: await chooseClusterEntryPoint(rootPath, cluster.files, entryPoints, cluster.key)
+      }))
+  ))
     .sort((left, right) => {
       if (right.files.length !== left.files.length) {
         return right.files.length - left.files.length;

@@ -25,6 +25,17 @@ describe("analyzeRepository", () => {
     expect(result.entryPoints.map((entryPoint) => entryPoint.path)).toContain("manage.py");
   });
 
+  it("detects a Python library package root", async () => {
+    const result = await analyzeRepository(path.join(fixturesRoot, "spine-python-library"));
+
+    expect(result.detection.shape).toBe("library");
+    expect(result.detection.languages).toContain("python");
+    expect(result.entryPoints.map((entryPoint) => entryPoint.path)).toEqual([
+      "src/clickish/__init__.py"
+    ]);
+    expect(result.entryPoints[0]?.kind).toBe("library");
+  });
+
   it("detects a Go CLI", async () => {
     const result = await analyzeRepository(path.join(fixturesRoot, "go-cli"));
 

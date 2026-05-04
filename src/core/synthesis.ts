@@ -170,7 +170,11 @@ function renderDeterministicTlDr(analysis: AnalysisResult): string {
   const spineLead = analysis.spine.nodes.slice(0, 3).map((node) => `\`${node}\``).join(", ");
   return [
     `This repository is a ${analysis.detection.shape} built primarily in ${analysis.detection.languages.join(", ")}.`,
-    spineLead ? `The verified spine currently runs through ${spineLead}.` : "The verified spine is still shallow for this codebase shape.",
+    analysis.entryPoints.length === 0
+      ? "No verified entry point was found yet, so the onboarding map is still coverage-limited."
+      : spineLead
+        ? `The verified spine currently runs through ${spineLead}.`
+        : "The verified spine is still shallow for this codebase shape.",
     analysis.diagram
       ? "The architecture diagram is derived from verified static-analysis edges only."
       : "Architecture edges are still constrained to the verified relationships we could prove statically."
@@ -178,26 +182,63 @@ function renderDeterministicTlDr(analysis: AnalysisResult): string {
 }
 
 function renderDeterministicMentalModel(analysis: AnalysisResult): string {
-  const shape = analysis.detection.shape;
-  if (shape === "cli") {
-    return "Treat the command surface as the product: startup, argument flow, and the first handoff into core logic explain most of the system.";
+  const entryLead = analysis.entryPoints[0]?.path;
+  const firstHandoff = analysis.spine.edges[0];
+  const busiestSubsystem = analysis.subsystems[0];
+
+  if (analysis.detection.shape === "monorepo") {
+    return entryLead
+      ? `Orient package-first: start with \`${entryLead}\`, then stay inside the workspace slice that owns the next verified handoff${firstHandoff ? ` into \`${firstHandoff.to}\`` : ""}.`
+      : "Work package-first, not file-first: find the owning workspace, then follow the first verified spine inside that slice.";
   }
-  if (shape === "library") {
-    return "Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.";
+
+  if (analysis.detection.shape === "library") {
+    return entryLead
+      ? `Read from the exported surface inward: start with \`${entryLead}\`${firstHandoff ? `, then follow its first verified handoff into \`${firstHandoff.to}\`` : ""}${busiestSubsystem ? ` before branching into the ${busiestSubsystem.label.toLowerCase()} area.` : "."}`
+      : "Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.";
   }
-  if (shape === "monorepo") {
-    return "Work package-first, not file-first: find the owning workspace, then follow the verified spine inside that slice.";
+
+  if (entryLead && firstHandoff) {
+    return `Follow the runtime path from \`${entryLead}\` into \`${firstHandoff.to}\` first, then widen out into${busiestSubsystem ? ` the ${busiestSubsystem.label.toLowerCase()} subsystem` : " the surrounding subsystems"} once that handoff makes sense.`;
   }
-  return "Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.";
+
+  return entryLead
+    ? `Start at \`${entryLead}\` and use the verified spine as the backbone before branching into supporting files.`
+    : "Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.";
 }
 
 function buildDeterministicReadingOrder(analysis: AnalysisResult): ReadingOrderItem[] {
+  const incomingByFile = new Map<string, string[]>();
+  const outgoingByFile = new Map<string, string[]>();
+
+  for (const edge of analysis.spine.edges) {
+    const outgoing = outgoingByFile.get(edge.from) ?? [];
+    outgoing.push(edge.to);
+    outgoingByFile.set(edge.from, outgoing);
+
+    const incoming = incomingByFile.get(edge.to) ?? [];
+    incoming.push(edge.from);
+    incomingByFile.set(edge.to, incoming);
+  }
+
   return analysis.suggestedReadingOrder.slice(0, 12).map((filePath, index) => {
     let why = "Defines a key project contract or context file.";
-    if (analysis.entryPoints.some((entryPoint) => entryPoint.path === filePath)) {
-      why = "This is a detected entry point, so it shows how execution begins.";
-    } else if (analysis.spine.nodes.includes(filePath)) {
-      why = "This file sits on the verified architecture spine and explains the main runtime handoff.";
+    const entryPoint = analysis.entryPoints.find((candidate) => candidate.path === filePath);
+    const incoming = incomingByFile.get(filePath) ?? [];
+    const outgoing = outgoingByFile.get(filePath) ?? [];
+
+    if (entryPoint) {
+      why = `Detected ${entryPoint.kind} entry point; it shows where execution begins for this repo shape.`;
+    } else if (incoming.length > 0 && outgoing.length > 0) {
+      why = `Verified spine bridge from \`${incoming[0]}\` into \`${outgoing[0]}\`, so it explains a central runtime handoff.`;
+    } else if (incoming.length > 0) {
+      why = `Reached directly from \`${incoming[0]}\`; this is one of the next verified implementation hops.`;
+    } else if (outgoing.length > 0) {
+      why = `Verified spine source file that hands work off to \`${outgoing[0]}\`.`;
+    } else if (/README\.md$/i.test(filePath)) {
+      why = "Repository overview and contributor context.";
+    } else if (/(package\.json|pyproject\.toml|Cargo\.toml|go\.mod|tsconfig\.json)$/i.test(filePath)) {
+      why = "Defines build, package, or module boundaries that shape how the code is wired.";
     } else if (index < 3) {
       why = "This file grounds the earliest high-signal part of the codebase.";
     }
@@ -261,6 +302,12 @@ function buildActualCostSummary(
 
 function buildDeterministicGotchas(analysis: AnalysisResult): string[] {
   const gotchas = [...analysis.detection.reasons];
+  if (analysis.entryPoints.length === 0) {
+    gotchas.push("No verified entry point was detected yet, so the guide is limited to whatever structure could be inferred from static file layout.");
+  }
+  if (analysis.entryPoints.length > 0 && analysis.spine.edges.length === 0) {
+    gotchas.push("Entry points were detected, but no verified static-analysis edges could be proved yet for this repository.");
+  }
   if (analysis.diagram) {
     gotchas.push("The architecture diagram is intentionally incomplete where static analysis could not verify an edge.");
   }
@@ -464,4 +511,3 @@ export async function synthesizeTour(
 
   return buildDeterministicSynthesis(prompt, analysis, spineLineCount);
 }
-

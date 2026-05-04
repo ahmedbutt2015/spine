@@ -99,8 +99,36 @@ function collectImportSpecifiers(source: string): string[] {
 function collectPythonImportSpecifiers(source: string): string[] {
   const matches: string[] = [];
   const lines = source.split(/\r?\n/);
+  const statements: string[] = [];
+  let buffer = "";
+  let parenDepth = 0;
 
-  for (const line of lines) {
+  for (const rawLine of lines) {
+    const withoutComment = rawLine.replace(/#.*$/, "");
+    const trimmed = withoutComment.trim();
+    if (!trimmed && buffer.length === 0) {
+      continue;
+    }
+
+    buffer = buffer ? `${buffer} ${trimmed}`.trim() : trimmed;
+    parenDepth += (trimmed.match(/\(/g) ?? []).length;
+    parenDepth -= (trimmed.match(/\)/g) ?? []).length;
+
+    if (parenDepth > 0 || trimmed.endsWith("\\")) {
+      continue;
+    }
+
+    if (buffer) {
+      statements.push(buffer);
+      buffer = "";
+    }
+  }
+
+  if (buffer) {
+    statements.push(buffer);
+  }
+
+  for (const line of statements) {
     const importMatch = line.match(/^\s*import\s+(.+)$/);
     if (importMatch) {
       const modules = importMatch[1]
@@ -115,11 +143,17 @@ function collectPythonImportSpecifiers(source: string): string[] {
     if (fromMatch) {
       const moduleSpecifier = fromMatch[1];
       const importedNames = fromMatch[2]
+        .replace(/[()]/g, "")
         .split(",")
         .map((part) => part.trim().split(/\s+as\s+/)[0]?.trim())
-        .filter((part): part is string => Boolean(part && part !== "*"));
+        .filter((part): part is string => Boolean(part));
 
       for (const importedName of importedNames) {
+        if (importedName === "*") {
+          matches.push(`${moduleSpecifier}:*`);
+          continue;
+        }
+
         matches.push(`${moduleSpecifier}:${importedName}`);
       }
 
@@ -368,7 +402,10 @@ function resolvePythonSpecifierToModuleNames(filePath: string, specifier: string
   if (specifier.includes(":")) {
     const [modulePart, importedName] = specifier.split(":", 2);
     const baseModule = resolvePythonBaseModule(filePath, modulePart);
-    const candidates = importedName ? [`${baseModule}.${importedName}`, baseModule] : [baseModule];
+    const candidates =
+      importedName && importedName !== "*"
+        ? [`${baseModule}.${importedName}`, baseModule]
+        : [baseModule];
     return candidates.filter(Boolean);
   }
 
@@ -463,26 +500,58 @@ async function buildRustModuleGraph(
   return graph;
 }
 
-function chooseRepresentativeGoFile(directoryPath: string, files: string[]): string {
-  const sortedFiles = [...files].sort();
-  const basename = path.posix.basename(directoryPath);
+function countGoDeclarations(source: string): number {
+  let declarations = 0;
 
-  const preferredCandidates = [
-    basename ? path.posix.join(directoryPath, `${basename}.go`) : "main.go",
-    path.posix.join(directoryPath, "main.go"),
-    path.posix.join(directoryPath, "root.go")
-  ];
-
-  for (const candidate of preferredCandidates) {
-    if (sortedFiles.includes(candidate)) {
-      return candidate;
+  for (const line of source.split(/\r?\n/)) {
+    if (/^\s*(?:type|func|var|const)\s+/.test(line)) {
+      declarations += /\b[A-Z]/.test(line) ? 3 : 1;
     }
   }
 
-  return sortedFiles[0];
+  return declarations;
 }
 
-function buildGoPackageIndex(candidateFiles: Set<string>): Map<string, string> {
+async function chooseRepresentativeGoFile(rootPath: string, directoryPath: string, files: string[]): Promise<string> {
+  const sortedFiles = [...files].sort();
+  const basename = path.posix.basename(directoryPath);
+  const scored = await Promise.all(
+    sortedFiles.map(async (filePath) => {
+      const source = await readFile(path.join(rootPath, filePath), "utf8");
+      let score = countGoDeclarations(source);
+
+      if (filePath === path.posix.join(directoryPath, "main.go")) {
+        score += 20;
+      }
+      if (basename && filePath === path.posix.join(directoryPath, `${basename}.go`)) {
+        score += 4;
+      }
+      if (filePath === path.posix.join(directoryPath, "doc.go")) {
+        score -= 2;
+      }
+
+      return {
+        filePath,
+        score,
+        lineCount: source.split(/\r?\n/).length
+      };
+    })
+  );
+
+  scored.sort((left, right) => {
+    if (right.score !== left.score) {
+      return right.score - left.score;
+    }
+    if (right.lineCount !== left.lineCount) {
+      return right.lineCount - left.lineCount;
+    }
+    return left.filePath.localeCompare(right.filePath);
+  });
+
+  return scored[0]?.filePath ?? sortedFiles[0];
+}
+
+async function buildGoPackageIndex(rootPath: string, candidateFiles: Set<string>): Promise<Map<string, string>> {
   const filesByDirectory = new Map<string, string[]>();
 
   for (const filePath of candidateFiles) {
@@ -494,7 +563,7 @@ function buildGoPackageIndex(candidateFiles: Set<string>): Map<string, string> {
 
   const packageIndex = new Map<string, string>();
   for (const [directoryPath, files] of filesByDirectory) {
-    packageIndex.set(directoryPath, chooseRepresentativeGoFile(directoryPath, files));
+    packageIndex.set(directoryPath, await chooseRepresentativeGoFile(rootPath, directoryPath, files));
   }
 
   return packageIndex;
@@ -527,7 +596,7 @@ async function buildGoImportGraph(
     return graph;
   }
 
-  const packageIndex = buildGoPackageIndex(candidateFiles);
+  const packageIndex = await buildGoPackageIndex(rootPath, candidateFiles);
 
   for (const filePath of candidateFiles) {
     const absolutePath = path.join(rootPath, filePath);
@@ -666,10 +735,28 @@ async function buildPhpImportGraph(
   return graph;
 }
 
-function chooseSpineNodes(scores: Map<string, number>, entrySeeds: string[]): string[] {
+function chooseSpineNodes(
+  scores: Map<string, number>,
+  entrySeeds: string[],
+  graphs: Iterable<Map<string, Set<string>>>
+): string[] {
+  const inDegree = new Map<string, number>();
+  const outDegree = new Map<string, number>();
+
+  for (const graph of graphs) {
+    for (const [from, dependencies] of graph.entries()) {
+      outDegree.set(from, (outDegree.get(from) ?? 0) + dependencies.size);
+      for (const dependency of dependencies) {
+        inDegree.set(dependency, (inDegree.get(dependency) ?? 0) + 1);
+      }
+    }
+  }
+
   const ranked = [...scores.entries()].sort((left, right) => {
-    if (right[1] !== left[1]) {
-      return right[1] - left[1];
+    const leftWeight = left[1] + (outDegree.get(left[0]) ?? 0) * 2 + (inDegree.get(left[0]) ?? 0);
+    const rightWeight = right[1] + (outDegree.get(right[0]) ?? 0) * 2 + (inDegree.get(right[0]) ?? 0);
+    if (rightWeight !== leftWeight) {
+      return rightWeight - leftWeight;
     }
 
     const leftSeed = entrySeeds.includes(left[0]) ? 1 : 0;
@@ -681,7 +768,29 @@ function chooseSpineNodes(scores: Map<string, number>, entrySeeds: string[]): st
     return left[0].localeCompare(right[0]);
   });
 
-  return ranked.slice(0, Math.min(7, Math.max(5, ranked.length))).map(([filePath]) => filePath);
+  const maxNodes = Math.min(10, Math.max(6, entrySeeds.length + 5));
+  const selected: string[] = [];
+  const seen = new Set<string>();
+
+  for (const seed of entrySeeds) {
+    if (scores.has(seed) && !seen.has(seed)) {
+      selected.push(seed);
+      seen.add(seed);
+    }
+  }
+
+  for (const [filePath] of ranked) {
+    if (selected.length >= Math.min(maxNodes, ranked.length)) {
+      break;
+    }
+
+    if (!seen.has(filePath)) {
+      selected.push(filePath);
+      seen.add(filePath);
+    }
+  }
+
+  return selected;
 }
 
 function scoreGraphFromSeeds(
@@ -726,7 +835,7 @@ function scoreGraphFromSeeds(
 export async function extractVerifiedSpine(
   rootPath: string,
   entryPoints: EntryPoint[],
-  maxDepth = 3
+  maxDepth = 4
 ): Promise<SpineAnalysis> {
   const repositoryFiles = await walkRepositoryFiles(rootPath);
   const tsJsFiles = new Set(
@@ -827,7 +936,7 @@ export async function extractVerifiedSpine(
   }
 
   const entrySeeds = [...tsJsEntries, ...pythonEntries, ...rustEntries, ...goEntries, ...phpEntries].sort();
-  const nodes = chooseSpineNodes(scores, entrySeeds);
+  const nodes = chooseSpineNodes(scores, entrySeeds, graphs.values());
   const nodeSet = new Set(nodes);
   const edges: VerifiedEdge[] = [];
 

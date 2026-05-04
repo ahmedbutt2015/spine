@@ -51,12 +51,16 @@ export async function readJsonIfExists<T>(targetPath: string): Promise<T | null>
 }
 
 export async function listTopLevelDirectories(rootPath: string): Promise<string[]> {
-  const entries = await readdir(rootPath, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .filter((name) => !SKIP_DIRECTORIES.has(name))
-    .sort();
+  try {
+    const entries = await readdir(rootPath, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => !SKIP_DIRECTORIES.has(name))
+      .sort();
+  } catch {
+    return [];
+  }
 }
 
 async function isVendoredDirectory(directoryPath: string): Promise<boolean> {
@@ -83,7 +87,12 @@ export async function walkRepositoryFiles(rootPath: string, maxFiles = 2000): Pr
       return;
     }
 
-    const entries = await readdir(currentPath, { withFileTypes: true });
+    let entries;
+    try {
+      entries = await readdir(currentPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
 
     for (const entry of entries) {
       if (results.length >= maxFiles) {

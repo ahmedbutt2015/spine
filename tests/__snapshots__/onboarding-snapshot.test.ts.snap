@@ -4,15 +4,15 @@ exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-
 "# Onboarding tour: spine-go
 
 ## TL;DR
-This repository is a app built primarily in go. The verified spine currently runs through \`main.go\`, \`config/config.go\`, \`routes/routes.go\`. The architecture diagram is derived from verified static-analysis edges only.
+This repository is a app built primarily in go. The verified spine currently runs through \`main.go\`, \`routes/routes.go\`, \`service/service.go\`. The architecture diagram is derived from verified static-analysis edges only.
 
 ## Architecture map
 \`\`\`mermaid
 flowchart LR
   main
-  config_config
   routes_routes
   service_service
+  config_config
   store_store
   main --> config_config
   main --> routes_routes
@@ -20,27 +20,27 @@ flowchart LR
   service_service --> store_store
 \`\`\`
 
-View / edit on [mermaid.live](https://mermaid.live/view#pako:eNptj7sKwzAMRX_FaE5-wEOnjp3atRCELSeG2C6K3FJC_r1x0gchXXTgSNyLRjDJEmhwfXqYDlnU6XyNSgX0sdCk6HzbrCiCUxYamhVFDMR3b6h5c1GSeBZlfrJUXR_2Yd_NLnUjlpN_PVu1nv26oYJAPHdY0CNIR6F8aslh7gWmCjBLujyjAS2cqYJ8syh09NgyBtAO-4GmFwKkaSM)
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNptj7sKwzAMRX_FaE5-wEOnjp3atRCELSeG2C6K3FJC_r1x0gdtuujC1UEHjWCSJdDg-nQzHbKow_EclQroY0lOWWho1ijFQHz1hppnlsqk6HzbrLEwkngmynzdUnW924LvzUbzVSzIH_FPtWIfN1QQiGeHBT2CdBTKp5Yc5l5gqgCzpNM9GtDCmSrIF4tCe48tYwDtsB9oegAMKGkj)
 
 Legend:
 - \`main\` = \`main.go\`
-- \`config_config\` = \`config/config.go\`
 - \`routes_routes\` = \`routes/routes.go\`
 - \`service_service\` = \`service/service.go\`
+- \`config_config\` = \`config/config.go\`
 - \`store_store\` = \`store/store.go\`
 
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+Follow the runtime path from \`main.go\` into \`config/config.go\` first, then widen out into the surrounding subsystems once that handoff makes sense.
 
 ## Reading order
-- \`main.go\` - This is a detected entry point, so it shows how execution begins.
-- \`config/config.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`routes/routes.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`service/service.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`store/store.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`go.mod\` - Defines a key project contract or context file.
+- \`main.go\` - Detected app entry point; it shows where execution begins for this repo shape.
+- \`routes/routes.go\` - Verified spine bridge from \`main.go\` into \`service/service.go\`, so it explains a central runtime handoff.
+- \`service/service.go\` - Verified spine bridge from \`routes/routes.go\` into \`store/store.go\`, so it explains a central runtime handoff.
+- \`config/config.go\` - Reached directly from \`main.go\`; this is one of the next verified implementation hops.
+- \`store/store.go\` - Reached directly from \`service/service.go\`; this is one of the next verified implementation hops.
+- \`go.mod\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - main.go - Conventional Go entry.
@@ -84,13 +84,13 @@ Legend:
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
+Read from the exported surface inward: start with \`lib.go\`, then follow its first verified handoff into \`internal/parser/parser.go\`.
 
 ## Reading order
-- \`lib.go\` - This is a detected entry point, so it shows how execution begins.
-- \`internal/parser/parser.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`internal/transport/transport.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`go.mod\` - Defines a key project contract or context file.
+- \`lib.go\` - Detected library entry point; it shows where execution begins for this repo shape.
+- \`internal/parser/parser.go\` - Reached directly from \`lib.go\`; this is one of the next verified implementation hops.
+- \`internal/transport/transport.go\` - Reached directly from \`lib.go\`; this is one of the next verified implementation hops.
+- \`go.mod\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - lib.go - Go package root (no main.go).
@@ -140,15 +140,15 @@ Legend:
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+Follow the runtime path from \`cmd/api/main.go\` into \`internal/server/server.go\` first, then widen out into the surrounding subsystems once that handoff makes sense.
 
 ## Reading order
-- \`cmd/api/main.go\` - This is a detected entry point, so it shows how execution begins.
-- \`cmd/worker/main.go\` - This is a detected entry point, so it shows how execution begins.
-- \`internal/store/store.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`internal/jobs/jobs.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`internal/server/server.go\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`go.mod\` - Defines a key project contract or context file.
+- \`cmd/api/main.go\` - Detected cli entry point; it shows where execution begins for this repo shape.
+- \`cmd/worker/main.go\` - Detected cli entry point; it shows where execution begins for this repo shape.
+- \`internal/store/store.go\` - Reached directly from \`internal/jobs/jobs.go\`; this is one of the next verified implementation hops.
+- \`internal/jobs/jobs.go\` - Verified spine bridge from \`cmd/worker/main.go\` into \`internal/store/store.go\`, so it explains a central runtime handoff.
+- \`internal/server/server.go\` - Verified spine bridge from \`cmd/api/main.go\` into \`internal/store/store.go\`, so it explains a central runtime handoff.
+- \`go.mod\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - cmd/api/main.go - Go cmd/*/main.go convention.
@@ -180,43 +180,44 @@ flowchart LR
   src_Http_Router
   src_Controllers_HomeController
   src_Services_UserService
+  src_Models_User
   public_index --> src_Http_Router
   src_Controllers_HomeController --> src_Services_UserService
   src_Http_Router --> src_Controllers_HomeController
+  src_Services_UserService --> src_Models_User
 \`\`\`
 
-View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqVkLsKg0AQRX9FptYf2CJNUlikUtIFls3uGBf2IbOzeSD-exCiAcEi5RnuvQdmBB0NgoDOxafuFXFxbq6hKIZ8c1ZLGwy-Zk6kZc08yCZmRlpOxxiYonNISdbR44-XRIv0sBqTvCSkL2wFRVUd_jesrT3FZnHN709CCR7JK2tAjMA9-vk3BjuVHcNUgsoc23fQIJgylpAHoxhPVt1JeRCdcgmnD7iufkc)
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqdkL0OwjAMhF-l8ty-QAcWGDrA0ooNKQqJSyMlTeU4_Kjqu0MFLRUDEoznu_MnuwflNUIOtfUX1UjiZFse2iTp4tEaJUyr8TrqQEoUzJ0ofWSkabT2LZO3FimIwjt86ylRIZ2NwiD2AeklJm_3YNun88lMsmz1O3RufaMuNs75_-6Y64tDIAWH5KTRkPfADbrxvRprGS3DkIKM7KtbqyBniphC7LRk3Bh5Iukgr6UNONwBXGaW_w)
 
 Legend:
 - \`public_index\` = \`public/index.php\`
 - \`src_Http_Router\` = \`src/Http/Router.php\`
 - \`src_Controllers_HomeController\` = \`src/Controllers/HomeController.php\`
 - \`src_Services_UserService\` = \`src/Services/UserService.php\`
+- \`src_Models_User\` = \`src/Models/User.php\`
 
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+Follow the runtime path from \`public/index.php\` into \`src/Http/Router.php\` first, then widen out into the surrounding subsystems once that handoff makes sense.
 
 ## Reading order
-- \`public/index.php\` - This is a detected entry point, so it shows how execution begins.
-- \`src/Http/Router.php\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/Controllers/HomeController.php\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/Services/UserService.php\` - This file sits on the verified architecture spine and explains the main runtime handoff.
+- \`public/index.php\` - Detected app entry point; it shows where execution begins for this repo shape.
+- \`src/Http/Router.php\` - Verified spine bridge from \`public/index.php\` into \`src/Controllers/HomeController.php\`, so it explains a central runtime handoff.
+- \`src/Controllers/HomeController.php\` - Verified spine bridge from \`src/Http/Router.php\` into \`src/Services/UserService.php\`, so it explains a central runtime handoff.
+- \`src/Services/UserService.php\` - Verified spine bridge from \`src/Controllers/HomeController.php\` into \`src/Models/User.php\`, so it explains a central runtime handoff.
+- \`src/Models/User.php\` - Reached directly from \`src/Services/UserService.php\`; this is one of the next verified implementation hops.
 
 ## Entry points found
 - public/index.php - PHP front controller.
 
 ## Subsystems
-### Data
-What it does: Data access, persistence, and state interaction.
-Where it lives: \`src/Models/**\`
-Entry point: \`src/Models/User.php\`
-Skip unless: Skip unless your task touches storage, models, or persistence.
+- No subsystem clusters were strong enough to report yet.
 
 ## Gotchas
 - Defaulted to app after manifest and file scan.
 - The architecture diagram is intentionally incomplete where static analysis could not verify an edge.
+- Subsystem clustering is still sparse, which usually means the repo is small or highly centralized.
 
 ## Estimated read time
 10 minutes for the spine, 1 hour for fuller coverage.
@@ -227,16 +228,16 @@ exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-
 "# Onboarding tour: spine-python
 
 ## TL;DR
-This repository is a app built primarily in python. The verified spine currently runs through \`manage.py\`, \`app/main.py\`, \`app/config.py\`. The architecture diagram is derived from verified static-analysis edges only.
+This repository is a app built primarily in python. The verified spine currently runs through \`manage.py\`, \`app/main.py\`, \`app/routes.py\`. The architecture diagram is derived from verified static-analysis edges only.
 
 ## Architecture map
 \`\`\`mermaid
 flowchart LR
   manage
   app_main
-  app_config
   app_routes
   app_services_user_service
+  app_config
   app_main --> app_config
   app_main --> app_routes
   app_main --> app_services_user_service
@@ -244,27 +245,27 @@ flowchart LR
   manage --> app_main
 \`\`\`
 
-View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqFkLEKwzAMRH_FaE5-wEOnjp3atRCELSeG2A623BJC_r0JwaWG0m7vuNMJaQEVNIEEM4anGjCyuFzvXgiHHnvaCaepc2h9YRW8sX1RMWSmVFSi-LCKUpc3KuqzRLTt6UtLZdWVlfWz_5j7nz1Oe-f2BdCAo7iRBrkAD-T2n2gymEeGtQHMHG6zVyA5ZmogTxqZzhb7iA6kwTHR-gJCFHfV)
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNqFkLEKwzAMRH_FaE5-wEOnjp3atRCELTuG2A623BJC_r0JwaVZmu0dd9IhzaCiJpBghvhWPSYWt_szCOExoKWNcBw7jy5UTrEw5aoypZdTlLuyUlXVVDEYZ3-XiLa9nFnHgoP1t22fO8_up31zWwE04CmtpEHOwD357SeaDJaBYWkAC8fHFBRIToUaKKNGpqtDm9CDNDhkWj5QpHfV)
 
 Legend:
 - \`manage\` = \`manage.py\`
 - \`app_main\` = \`app/main.py\`
-- \`app_config\` = \`app/config.py\`
 - \`app_routes\` = \`app/routes.py\`
 - \`app_services_user_service\` = \`app/services/user_service.py\`
+- \`app_config\` = \`app/config.py\`
 
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Follow the first verified handoff from the entry point into the main runtime path, then branch into subsystems only after that spine makes sense.
+Follow the runtime path from \`manage.py\` into \`app/config.py\` first, then widen out into the core subsystem once that handoff makes sense.
 
 ## Reading order
-- \`manage.py\` - This is a detected entry point, so it shows how execution begins.
-- \`app/main.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`app/config.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`app/routes.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`app/services/user_service.py\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`pyproject.toml\` - Defines a key project contract or context file.
+- \`manage.py\` - Detected main entry point; it shows where execution begins for this repo shape.
+- \`app/main.py\` - Verified spine bridge from \`manage.py\` into \`app/config.py\`, so it explains a central runtime handoff.
+- \`app/routes.py\` - Verified spine bridge from \`app/main.py\` into \`app/services/user_service.py\`, so it explains a central runtime handoff.
+- \`app/services/user_service.py\` - Reached directly from \`app/main.py\`; this is one of the next verified implementation hops.
+- \`app/config.py\` - Reached directly from \`app/main.py\`; this is one of the next verified implementation hops.
+- \`pyproject.toml\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - manage.py - Conventional Python framework entry.
@@ -289,15 +290,15 @@ exports[`ONBOARDING.md snapshot > renders a stable deterministic tour for spine-
 "# Onboarding tour: spine-rust
 
 ## TL;DR
-This repository is a library built primarily in rust. The verified spine currently runs through \`src/lib.rs\`, \`src/config.rs\`, \`src/routes/mod.rs\`. The architecture diagram is derived from verified static-analysis edges only.
+This repository is a library built primarily in rust. The verified spine currently runs through \`src/lib.rs\`, \`src/services/mod.rs\`, \`src/config.rs\`. The architecture diagram is derived from verified static-analysis edges only.
 
 ## Architecture map
 \`\`\`mermaid
 flowchart LR
   src_lib
+  src_services_mod
   src_config
   src_routes_mod
-  src_services_mod
   src_services_user_service
   src_lib --> src_config
   src_lib --> src_routes_mod
@@ -305,27 +306,27 @@ flowchart LR
   src_services_mod --> src_services_user_service
 \`\`\`
 
-View / edit on [mermaid.live](https://mermaid.live/view#pako:eNp9UMsKwjAQ_JWw5_YHcvDk0ZNehbImmzaQNLLZKFL679ZDIFD1No9lZtgFTLIEGlxITzMhizqdr7NSmc0Q_K1Ck2bnx8o4FaE8xGSrkokf3vzQyoYqa7JV3x--hLfOvqh1_5Zu2v6wXQIdROKI3oJeQCaKnz9YcliCwNoBFkmX12xACxfqoNwtCh09jowRtMOQaX0Dqa108g)
+View / edit on [mermaid.live](https://mermaid.live/view#pako:eNptULsOwjAM_JXIc_sDGZgYmWBFqkzitJGSBjkOCFX9d2AICmq3e9in0y1gkiXQ4EJ6mglZ1Ol8nZXKbIbgbxVm4oc3lIeYbNVMmp0fK-NU5N___ZQPqqzJVn1_2AlqnW1o6-6VarXtYdsEOojEEb0FvYBMFL87WHJYgsDaARZJl9dsQAsX6qDcLQodPY6MEbTDkGl9A645dPI)
 
 Legend:
 - \`src_lib\` = \`src/lib.rs\`
+- \`src_services_mod\` = \`src/services/mod.rs\`
 - \`src_config\` = \`src/config.rs\`
 - \`src_routes_mod\` = \`src/routes/mod.rs\`
-- \`src_services_mod\` = \`src/services/mod.rs\`
 - \`src_services_user_service\` = \`src/services/user_service.rs\`
 
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
+Read from the exported surface inward: start with \`src/lib.rs\`, then follow its first verified handoff into \`src/config.rs\`.
 
 ## Reading order
-- \`src/lib.rs\` - This is a detected entry point, so it shows how execution begins.
-- \`src/config.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/routes/mod.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/services/mod.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/services/user_service.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`Cargo.toml\` - Defines a key project contract or context file.
+- \`src/lib.rs\` - Detected library entry point; it shows where execution begins for this repo shape.
+- \`src/services/mod.rs\` - Verified spine bridge from \`src/lib.rs\` into \`src/services/user_service.rs\`, so it explains a central runtime handoff.
+- \`src/config.rs\` - Reached directly from \`src/lib.rs\`; this is one of the next verified implementation hops.
+- \`src/routes/mod.rs\` - Reached directly from \`src/lib.rs\`; this is one of the next verified implementation hops.
+- \`src/services/user_service.rs\` - Reached directly from \`src/services/mod.rs\`; this is one of the next verified implementation hops.
+- \`Cargo.toml\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - src/lib.rs - Conventional Rust library entry.
@@ -374,15 +375,15 @@ Legend:
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Work package-first, not file-first: find the owning workspace, then follow the verified spine inside that slice.
+Orient package-first: start with \`cli/src/main.rs\`, then stay inside the workspace slice that owns the next verified handoff into \`cli/src/commands.rs\`.
 
 ## Reading order
-- \`cli/src/main.rs\` - This is a detected entry point, so it shows how execution begins.
-- \`core/src/lib.rs\` - This is a detected entry point, so it shows how execution begins.
-- \`cli/src/commands.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`core/src/parser.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`core/src/types.rs\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`Cargo.toml\` - Defines a key project contract or context file.
+- \`cli/src/main.rs\` - Detected main entry point; it shows where execution begins for this repo shape.
+- \`core/src/lib.rs\` - Detected library entry point; it shows where execution begins for this repo shape.
+- \`cli/src/commands.rs\` - Reached directly from \`cli/src/main.rs\`; this is one of the next verified implementation hops.
+- \`core/src/parser.rs\` - Reached directly from \`core/src/lib.rs\`; this is one of the next verified implementation hops.
+- \`core/src/types.rs\` - Reached directly from \`core/src/lib.rs\`; this is one of the next verified implementation hops.
+- \`Cargo.toml\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - cli/src/main.rs - Rust workspace member: cli.
@@ -442,15 +443,15 @@ Legend:
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
+Read from the exported surface inward: start with \`src/cli.ts\`, then follow its first verified handoff into \`src/core/router.ts\` before branching into the auth area.
 
 ## Reading order
-- \`src/cli.ts\` - This is a detected entry point, so it shows how execution begins.
-- \`src/index.ts\` - This is a detected entry point, so it shows how execution begins.
-- \`src/services/user-service.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/core/router.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/handlers/user-handler.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`package.json\` - Defines a key project contract or context file.
+- \`src/cli.ts\` - Detected cli entry point; it shows where execution begins for this repo shape.
+- \`src/index.ts\` - Detected library entry point; it shows where execution begins for this repo shape.
+- \`src/services/user-service.ts\` - Reached directly from \`src/handlers/user-handler.ts\`; this is one of the next verified implementation hops.
+- \`src/core/router.ts\` - Verified spine bridge from \`src/cli.ts\` into \`src/handlers/user-handler.ts\`, so it explains a central runtime handoff.
+- \`src/handlers/user-handler.ts\` - Verified spine bridge from \`src/core/router.ts\` into \`src/services/user-service.ts\`, so it explains a central runtime handoff.
+- \`package.json\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - src/cli.ts - Declared as package.json bin.
@@ -517,14 +518,14 @@ Legend:
 Every edge above is verified by static analysis. Edges the tool couldn't verify are omitted, not guessed.
 
 ## Mental model
-Start from the exported surface and work inward; the stable public entry points are the fastest way to orient.
+Read from the exported surface inward: start with \`src/index.ts\`, then follow its first verified handoff into \`src/services/user-service.ts\`.
 
 ## Reading order
-- \`src/index.ts\` - This is a detected entry point, so it shows how execution begins.
-- \`src/services/user-service.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`src/utils/index.ts\` - This file sits on the verified architecture spine and explains the main runtime handoff.
-- \`package.json\` - Defines a key project contract or context file.
-- \`tsconfig.json\` - Defines a key project contract or context file.
+- \`src/index.ts\` - Detected library entry point; it shows where execution begins for this repo shape.
+- \`src/services/user-service.ts\` - Verified spine bridge from \`src/index.ts\` into \`src/utils/index.ts\`, so it explains a central runtime handoff.
+- \`src/utils/index.ts\` - Reached directly from \`src/index.ts\`; this is one of the next verified implementation hops.
+- \`package.json\` - Defines build, package, or module boundaries that shape how the code is wired.
+- \`tsconfig.json\` - Defines build, package, or module boundaries that shape how the code is wired.
 
 ## Entry points found
 - src/index.ts - Declared as package.json main.

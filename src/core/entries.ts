@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { DetectedLanguage, EntryPoint, ProjectDetection } from "../types.js";
@@ -7,6 +8,115 @@ interface PackageJsonShape {
   bin?: string | Record<string, string>;
   main?: string;
   exports?: Record<string, unknown> | string;
+}
+
+function normalizePythonPackageName(name: string): string {
+  return name.trim().replace(/[-.]+/g, "_").toLowerCase();
+}
+
+function parseTomlSectionValue(content: string, sectionName: string, key: string): string | null {
+  const escapedSection = sectionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const sectionPattern = new RegExp(
+    `^\\[${escapedSection}\\]\\s*([\\s\\S]*?)(?=^\\[[^\\]]+\\]|$)`,
+    "m"
+  );
+  const sectionBody = content.match(sectionPattern)?.[1];
+  if (!sectionBody) {
+    return null;
+  }
+
+  const valueMatch = sectionBody.match(new RegExp(`^\\s*${escapedKey}\\s*=\\s*["']([^"']+)["']`, "m"));
+  return valueMatch?.[1] ?? null;
+}
+
+function parsePythonProjectNames(pyprojectContent: string | null): string[] {
+  if (!pyprojectContent) {
+    return [];
+  }
+
+  const names = [
+    parseTomlSectionValue(pyprojectContent, "project", "name"),
+    parseTomlSectionValue(pyprojectContent, "tool.poetry", "name")
+  ].filter((value): value is string => Boolean(value));
+
+  return [...new Set(names.map((name) => normalizePythonPackageName(name)))];
+}
+
+function countGoDeclarations(source: string): number {
+  let declarations = 0;
+
+  for (const line of source.split(/\r?\n/)) {
+    if (/^\s*(?:type|func|var|const)\s+/.test(line)) {
+      declarations += /\b[A-Z]/.test(line) ? 3 : 1;
+    }
+  }
+
+  return declarations;
+}
+
+async function chooseGoLibraryRootFile(rootPath: string, filePaths: string[], moduleBasename: string | null): Promise<string> {
+  const scored = await Promise.all(
+    filePaths.map(async (filePath) => {
+      const source = await readFile(path.join(rootPath, filePath), "utf8");
+      let score = countGoDeclarations(source);
+      if (filePath === `${moduleBasename}.go`) {
+        score += 8;
+      }
+      if (filePath === "main.go") {
+        score += 20;
+      }
+      if (filePath === "doc.go") {
+        score -= 2;
+      }
+
+      return {
+        filePath,
+        score,
+        lineCount: source.split(/\r?\n/).length
+      };
+    })
+  );
+
+  scored.sort((left, right) => {
+    if (right.score !== left.score) {
+      return right.score - left.score;
+    }
+    if (right.lineCount !== left.lineCount) {
+      return right.lineCount - left.lineCount;
+    }
+    return left.filePath.localeCompare(right.filePath);
+  });
+
+  return scored[0]?.filePath ?? filePaths[0];
+}
+
+async function findPythonLibraryEntryPaths(
+  files: Array<{ path: string }>,
+  pyprojectContent: string | null
+): Promise<string[]> {
+  const packageRoots = files
+    .map((file) => file.path)
+    .filter((filePath) => /(?:^|\/)__init__\.py$/.test(filePath))
+    .filter((filePath) => /^(?:src\/)?[A-Za-z0-9_]+\/__init__\.py$/.test(filePath))
+    .sort();
+
+  if (packageRoots.length === 0) {
+    return [];
+  }
+
+  const preferredNames = parsePythonProjectNames(pyprojectContent);
+  const preferredEntries = packageRoots.filter((filePath) => {
+    const normalizedRoot = filePath.replace(/^src\//, "").replace(/\/__init__\.py$/, "").toLowerCase();
+    return preferredNames.includes(normalizedRoot);
+  });
+
+  if (preferredEntries.length > 0) {
+    return preferredEntries;
+  }
+
+  const shallowestDepth = Math.min(...packageRoots.map((filePath) => filePath.split("/").length));
+  return packageRoots.filter((filePath) => filePath.split("/").length === shallowestDepth).slice(0, 3);
 }
 
 async function resolveDeclaredEntryPath(rootPath: string, declaredPath: string): Promise<string | null> {
@@ -105,7 +215,15 @@ function inferKind(filePath: string): EntryPoint["kind"] {
     return "cli";
   }
 
+  if (normalized.endsWith("index.php") || normalized.includes("public/index")) {
+    return "app";
+  }
+
   if (normalized.includes("index") || normalized.includes("lib")) {
+    return "library";
+  }
+
+  if (normalized.includes("__init__")) {
     return "library";
   }
 
@@ -190,6 +308,7 @@ export async function findEntryPoints(
   await addIfExists(rootPath, entryPoints, "bin/console", "php", "Symfony CLI entry.");
 
   const files = await walkRepositoryFiles(rootPath);
+  const pyprojectContent = await readTextIfExists(path.join(rootPath, "pyproject.toml"));
 
   for (const file of files) {
     if (/^cmd\/[^/]+\/main\.go$/.test(file.path)) {
@@ -332,10 +451,7 @@ export async function findEntryPoints(
       if (rootGoFiles.length > 0) {
         const moduleMatch = goMod.match(/^module\s+(\S+)/m);
         const moduleBasename = moduleMatch ? path.posix.basename(moduleMatch[1]) : null;
-        const canonical =
-          (moduleBasename && rootGoFiles.find((filePath) => filePath === `${moduleBasename}.go`)) ||
-          rootGoFiles.find((filePath) => filePath === "doc.go") ||
-          rootGoFiles[0];
+        const canonical = await chooseGoLibraryRootFile(rootPath, rootGoFiles, moduleBasename);
 
         entryPoints.push({
           path: canonical,
@@ -344,6 +460,18 @@ export async function findEntryPoints(
           reason: "Go package root (no main.go)."
         });
       }
+    }
+  }
+
+  const hasPythonEntry = entryPoints.some((entryPoint) => entryPoint.language === "python");
+  if (!hasPythonEntry) {
+    for (const entryPath of await findPythonLibraryEntryPaths(files, pyprojectContent)) {
+      entryPoints.push({
+        path: entryPath,
+        language: "python",
+        kind: "library",
+        reason: "Python package root inferred from pyproject and __init__.py."
+      });
     }
   }
 

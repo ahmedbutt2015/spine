@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { fileURLToPath } from "node:url";
 import { appendFile, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -16,31 +17,47 @@ import {
 interface CliOptions {
   targetPath: string;
   json: boolean;
+  help: boolean;
+  dryRun: boolean;
   outPath?: string;
   promptOutPath?: string;
   synthesisCommand?: string;
   synthesisInputPath?: string;
   anthropicModel?: string;
-  noContextFile: boolean;
+  writeContextFile: boolean;
   contextFilePath?: string;
   mapOnly: boolean;
   costModel?: string;
   diffAgainst?: string;
+  maxDepth: number;
 }
 
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     targetPath: ".",
     json: false,
-    noContextFile: false,
-    mapOnly: false
+    help: false,
+    dryRun: false,
+    writeContextFile: false,
+    mapOnly: false,
+    maxDepth: 4
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
 
+    if (token === "--help" || token === "-h") {
+      options.help = true;
+      continue;
+    }
+
     if (token === "--json") {
       options.json = true;
+      continue;
+    }
+
+    if (token === "--dry-run") {
+      options.dryRun = true;
       continue;
     }
 
@@ -74,12 +91,18 @@ function parseArgs(argv: string[]): CliOptions {
       continue;
     }
 
+    if (token === "--write-context-file") {
+      options.writeContextFile = true;
+      continue;
+    }
+
     if (token === "--no-context-file") {
-      options.noContextFile = true;
+      options.writeContextFile = false;
       continue;
     }
 
     if (token === "--context-file") {
+      options.writeContextFile = true;
       options.contextFilePath = argv[index + 1];
       index += 1;
       continue;
@@ -98,6 +121,16 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (token === "--diff-against") {
       options.diffAgainst = argv[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (token === "--max-depth") {
+      const rawValue = argv[index + 1];
+      const parsedValue = Number.parseInt(rawValue ?? "", 10);
+      if (Number.isFinite(parsedValue) && parsedValue > 0) {
+        options.maxDepth = parsedValue;
+      }
       index += 1;
       continue;
     }
@@ -133,6 +166,36 @@ function countSubsystemFiles(subsystems: Array<{ files: string[] }>): number {
   return subsystems.reduce((sum, cluster) => sum + cluster.files.length, 0);
 }
 
+function renderUsage(): string {
+  return [
+    "Usage: onboard [target-path] [options]",
+    "",
+    "Generate a verified onboarding guide or architecture map for a repository.",
+    "",
+    "Options:",
+    "  --help, -h               Print usage and exit.",
+    "  --map-only               Print or write the verified Mermaid map only.",
+    "  --json                   Emit JSON instead of markdown/console text.",
+    "  --out <path>             Write output to a custom file.",
+    "  --dry-run                Analyze and synthesize without writing files.",
+    "  --write-context-file     Also write .claude/REPO_CONTEXT.md.",
+    "  --context-file <path>    Write the repo context file to a custom path.",
+    "  --prompt-out <path>      Save the synthesis prompt.",
+    "  --synthesis-input <path> Load synthesis JSON from a file.",
+    "  --synthesis-command <cmd> Pipe the synthesis prompt to an external command.",
+    "  --anthropic-model <id>   Use the built-in Anthropic synthesis path.",
+    "  --cost-model <id>        Override the pricing model label.",
+    "  --diff-against <path>    Compare the current onboarding result to an existing file.",
+    "  --max-depth <n>          Limit verified spine traversal depth. Default: 4.",
+    "",
+    "Examples:",
+    "  onboard .",
+    "  onboard . --map-only",
+    "  onboard . --dry-run --write-context-file",
+    "  onboard . --out docs/ONBOARDING.md"
+  ].join("\n");
+}
+
 function formatValueStatement(
   spineFileCount: number,
   spineLineCount: number,
@@ -144,10 +207,35 @@ function formatValueStatement(
   return `This tour covers ${spineFileCount} spine file(s) (~${spineLineCount} lines) and ${subsystemCount} subsystems.\nEstimated savings: ~${manualHours} hours of manual exploration for ~$${estimatedCost.toFixed(2)} of LLM cost.`;
 }
 
-async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+function shouldPrintValueStatement(result: Awaited<ReturnType<typeof analyzeRepository>>): boolean {
+  return result.entryPoints.length > 0 && result.spine.nodes.length >= 3 && result.spine.edges.length >= 2;
+}
+
+function buildCoverageHint(result: Awaited<ReturnType<typeof analyzeRepository>>): string | null {
+  if (result.entryPoints.length === 0) {
+    return "Coverage is limited: no verified entry points were found, so the guide may be thin until detection improves for this repo.";
+  }
+
+  if (result.spine.edges.length === 0) {
+    return "Coverage is limited: entry points were found, but no verified static-analysis edges could be proved yet.";
+  }
+
+  if (result.spine.nodes.length < 3) {
+    return "Coverage is limited: the verified spine is still very small for this repository.";
+  }
+
+  return null;
+}
+
+export async function runCli(argv: string[] = process.argv.slice(2)): Promise<void> {
+  const options = parseArgs(argv);
+  if (options.help) {
+    process.stdout.write(`${renderUsage()}\n`);
+    return;
+  }
+
   const rootPath = path.resolve(process.cwd(), options.targetPath);
-  const result = await analyzeRepository(rootPath);
+  const result = await analyzeRepository(rootPath, { maxDepth: options.maxDepth });
 
   if (options.mapOnly) {
     if (options.json) {
@@ -162,8 +250,12 @@ async function main(): Promise<void> {
 
     if (options.outPath) {
       const mapOutPath = path.resolve(process.cwd(), options.outPath);
-      await writeFile(mapOutPath, result.diagram.code, "utf8");
-      process.stdout.write(`Wrote ${mapOutPath}\n`);
+      if (options.dryRun) {
+        process.stdout.write(`Dry run: would write ${mapOutPath}\n`);
+      } else {
+        await writeFile(mapOutPath, result.diagram.code, "utf8");
+        process.stdout.write(`Wrote ${mapOutPath}\n`);
+      }
       process.stdout.write(`View / edit on ${result.diagram.mermaidLiveUrl}\n`);
       return;
     }
@@ -245,12 +337,19 @@ async function main(): Promise<void> {
     : path.join(rootPath, "ONBOARDING.md");
   const markdown = renderOnboardingMarkdown(result, synthesis);
 
-  await writeFile(outPath, markdown, "utf8");
-
   process.stdout.write(`Detected ${result.detection.shape} in ${result.detection.languages.join(", ")}.\n`);
   process.stdout.write(`Found ${result.entryPoints.length} entry point(s).\n`);
+  const coverageHint = buildCoverageHint(result);
+  if (coverageHint) {
+    process.stdout.write(`${coverageHint}\n`);
+  }
   process.stdout.write(`Synthesis source: ${synthesis.source}.\n`);
-  process.stdout.write(`Wrote ${outPath}\n`);
+  if (options.dryRun) {
+    process.stdout.write(`Dry run: would write ${outPath}\n`);
+  } else {
+    await writeFile(outPath, markdown, "utf8");
+    process.stdout.write(`Wrote ${outPath}\n`);
+  }
 
   const costModelKey = resolveCostModel(options.costModel);
   const inputTokens = estimateTokens(synthesis.prompt);
@@ -264,40 +363,60 @@ async function main(): Promise<void> {
       `Actual usage: input=${actualCost.inputTokens} cache_create=${actualCost.cacheCreationInputTokens} cache_read=${actualCost.cacheReadInputTokens} output=${actualCost.outputTokens} cost=$${actualCost.totalCost.toFixed(4)} (${actualCost.model})\n`
     );
 
-    const logPath = path.join(rootPath, ".spine-cost.log");
-    const logLine = `[${new Date().toISOString()}] model=${actualCost.model} input=${actualCost.inputTokens} cache_create=${actualCost.cacheCreationInputTokens} cache_read=${actualCost.cacheReadInputTokens} output=${actualCost.outputTokens} cost=$${actualCost.totalCost.toFixed(4)} repo=${result.detection.repoName}\n`;
-    await appendFile(logPath, logLine, "utf8");
-    process.stdout.write(`Appended cost to ${logPath}\n`);
+    if (options.dryRun) {
+      process.stdout.write(`Dry run: would append cost usage to ${path.join(rootPath, ".spine-cost.log")}\n`);
+    } else {
+      const logPath = path.join(rootPath, ".spine-cost.log");
+      const logLine = `[${new Date().toISOString()}] model=${actualCost.model} input=${actualCost.inputTokens} cache_create=${actualCost.cacheCreationInputTokens} cache_read=${actualCost.cacheReadInputTokens} output=${actualCost.outputTokens} cost=$${actualCost.totalCost.toFixed(4)} repo=${result.detection.repoName}\n`;
+      await appendFile(logPath, logLine, "utf8");
+      process.stdout.write(`Appended cost to ${logPath}\n`);
+    }
   } else {
     process.stdout.write(
       `Estimated cost: ~$${costEstimate.inputCost.toFixed(3)} input + ~$${costEstimate.outputCost.toFixed(3)} output = ~$${costEstimate.totalCost.toFixed(3)} (${costEstimate.modelLabel})\n`
     );
   }
 
-  const spineLineCount = await countSpineLines(rootPath, result.spine.nodes);
-  const subsystemFileCount = countSubsystemFiles(result.subsystems);
-  process.stdout.write(
-    `${formatValueStatement(
-      result.spine.nodes.length,
-      spineLineCount,
-      result.subsystems.length,
-      subsystemFileCount,
-      costForValue
-    )}\n`
-  );
+  if (shouldPrintValueStatement(result)) {
+    const spineLineCount = await countSpineLines(rootPath, result.spine.nodes);
+    const subsystemFileCount = countSubsystemFiles(result.subsystems);
+    process.stdout.write(
+      `${formatValueStatement(
+        result.spine.nodes.length,
+        spineLineCount,
+        result.subsystems.length,
+        subsystemFileCount,
+        costForValue
+      )}\n`
+    );
+  }
 
-  if (!options.noContextFile) {
+  if (options.writeContextFile) {
+    const contextPath = options.contextFilePath
+      ? path.resolve(process.cwd(), options.contextFilePath)
+      : path.join(rootPath, ".claude", "REPO_CONTEXT.md");
+    if (options.dryRun) {
+      process.stdout.write(
+        `Dry run: would write ${contextPath} (hash ${computeContextContentHash(result)})\n`
+      );
+      return;
+    }
+
     const contextWrite = await writeRepoContextFile(rootPath, result, synthesis, {
-      outPath: options.contextFilePath
-        ? path.resolve(process.cwd(), options.contextFilePath)
-        : undefined
+      outPath: options.contextFilePath ? contextPath : undefined
     });
     process.stdout.write(`Wrote ${contextWrite.path} (hash ${contextWrite.contentHash})\n`);
   }
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`${message}\n`);
-  process.exitCode = 1;
-});
+const isDirectCliInvocation = process.argv[1]
+  ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  : false;
+
+if (isDirectCliInvocation) {
+  runCli().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
+  });
+}

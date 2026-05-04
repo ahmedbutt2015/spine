@@ -8,6 +8,10 @@ import { pathExists } from "./repository.js";
 import { extractVerifiedSpine } from "./spine.js";
 import { clusterSubsystems } from "./subsystems.js";
 
+export interface AnalyzeRepositoryOptions {
+  maxDepth?: number;
+}
+
 async function collectReadingOrder(
   rootPath: string,
   entryPoints: string[],
@@ -38,10 +42,13 @@ async function collectReadingOrder(
   return existing;
 }
 
-export async function analyzeRepository(rootPath: string): Promise<AnalysisResult> {
+export async function analyzeRepository(
+  rootPath: string,
+  options: AnalyzeRepositoryOptions = {}
+): Promise<AnalysisResult> {
   const detection = await detectProject(rootPath);
   const entryPoints = await findEntryPoints(rootPath, detection);
-  const spine = await extractVerifiedSpine(rootPath, entryPoints);
+  const spine = await extractVerifiedSpine(rootPath, entryPoints, options.maxDepth);
   const diagram = await generateArchitectureDiagram(spine);
   const subsystems = await clusterSubsystems(rootPath, spine.nodes, entryPoints);
   const suggestedReadingOrder = await collectReadingOrder(

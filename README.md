@@ -95,7 +95,7 @@ The intended flow is:
 
 Why this is useful for Claude Code users:
 
-- `spine` writes `.claude/REPO_CONTEXT.md` automatically by default
+- `spine` can write `.claude/REPO_CONTEXT.md` when you opt in with `--write-context-file`
 - that file captures a compact verified snapshot of the repo
 - later Claude sessions can start more grounded instead of re-discovering the same project shape from scratch
 - the built-in Anthropic path supports prompt caching and cost reporting for repeated runs
@@ -167,6 +167,8 @@ npm run onboard -- . --synthesis-input .onboard-response.json
 npm run onboard -- . --synthesis-command "your-command-here"
 npm run onboard -- . --cost-model sonnet-4.6
 npm run onboard -- . --diff-against ONBOARDING.md
+npm run onboard -- . --dry-run
+npm run onboard -- . --write-context-file
 ```
 
 The built CLI also supports:
@@ -174,6 +176,9 @@ The built CLI also supports:
 ```bash
 onboard . --out custom-onboarding.md
 onboard . --map-only --out architecture.mmd
+onboard --help
+onboard . --dry-run
+onboard . --write-context-file
 ```
 
 ## Supported languages

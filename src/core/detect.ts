@@ -18,6 +18,59 @@ interface PackageJsonShape {
   exports?: Record<string, unknown> | string;
 }
 
+function normalizePythonPackageName(name: string): string {
+  return name.trim().replace(/[-.]+/g, "_").toLowerCase();
+}
+
+function parseTomlSectionValue(content: string, sectionName: string, key: string): string | null {
+  const escapedSection = sectionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const sectionPattern = new RegExp(
+    `^\\[${escapedSection}\\]\\s*([\\s\\S]*?)(?=^\\[[^\\]]+\\]|$)`,
+    "m"
+  );
+  const sectionBody = content.match(sectionPattern)?.[1];
+  if (!sectionBody) {
+    return null;
+  }
+
+  const valueMatch = sectionBody.match(new RegExp(`^\\s*${escapedKey}\\s*=\\s*["']([^"']+)["']`, "m"));
+  return valueMatch?.[1] ?? null;
+}
+
+function parsePythonProjectNames(pyprojectContent: string | null): string[] {
+  if (!pyprojectContent) {
+    return [];
+  }
+
+  const names = [
+    parseTomlSectionValue(pyprojectContent, "project", "name"),
+    parseTomlSectionValue(pyprojectContent, "tool.poetry", "name")
+  ].filter((value): value is string => Boolean(value));
+
+  return [...new Set(names.map((name) => normalizePythonPackageName(name)))];
+}
+
+function hasPythonLibraryPackage(files: RepoFile[], projectNames: string[]): boolean {
+  const packageRoots = files
+    .map((file) => file.path)
+    .filter((filePath) => /(?:^|\/)__init__\.py$/.test(filePath))
+    .map((filePath) => filePath.replace(/\/__init__\.py$/, ""));
+
+  if (packageRoots.length === 0) {
+    return false;
+  }
+
+  if (projectNames.length === 0) {
+    return packageRoots.some((packageRoot) => /^(?:src\/)?[A-Za-z0-9_]+$/.test(packageRoot));
+  }
+
+  return packageRoots.some((packageRoot) => {
+    const normalizedRoot = packageRoot.replace(/^src\//, "").toLowerCase();
+    return projectNames.includes(normalizedRoot);
+  });
+}
+
 const LANGUAGE_EXTENSIONS: Record<string, DetectedLanguage> = {
   ".ts": "typescript",
   ".tsx": "typescript",
@@ -110,6 +163,7 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
   const packageJsonPath = path.join(rootPath, "package.json");
   const packageJson = await readJsonIfExists<PackageJsonShape>(packageJsonPath);
   const pyproject = await pathExists(path.join(rootPath, "pyproject.toml"));
+  const pyprojectContent = pyproject ? await readTextIfExists(path.join(rootPath, "pyproject.toml")) : null;
   const cargoToml = await readTextIfExists(path.join(rootPath, "Cargo.toml"));
   const goMod = await pathExists(path.join(rootPath, "go.mod"));
   const nextConfig =
@@ -128,6 +182,11 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
   const hasGoMain = files.some(
     (file) => file.path === "main.go" || /^cmd\/[^/]+\/main\.go$/.test(file.path)
   );
+  const hasPythonAppEntry = files.some((file) =>
+    ["main.py", "app.py", "manage.py"].includes(file.path) || /(?:^|\/)__main__\.py$/.test(file.path)
+  );
+  const pythonProjectNames = parsePythonProjectNames(pyprojectContent);
+  const pythonLibrary = pyproject && !hasPythonAppEntry && hasPythonLibraryPackage(files, pythonProjectNames);
   const goLibrary = goMod && !hasGoMain;
   const composerHasPsr4 = Boolean(
     composerJson?.autoload && (composerJson.autoload as { "psr-4"?: unknown })["psr-4"]
@@ -146,6 +205,7 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
   const hasCliBin = Boolean(packageJson?.bin) || (await pathExists(path.join(rootPath, "bin")));
   const hasLibraryExports =
     Boolean(packageJson?.exports || packageJson?.main) ||
+    pythonLibrary ||
     (rustLibFile && !rustMainFile) ||
     cargoDeclaresLib ||
     goLibrary ||
@@ -179,4 +239,3 @@ export async function detectProject(rootPath: string): Promise<ProjectDetection>
     reasons
   };
 }
-
